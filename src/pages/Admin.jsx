@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuction } from '../context/AuctionContext';
+import { supabase } from '../utils/supabaseClient';
 import './Admin.css';
 
 const Admin = () => {
-    const { addProduct } = useAuction();
+    const { addProduct, fetchAuctions } = useAuction();
+    const [productsList, setProductsList] = useState([]);
+    const [loadingProducts, setLoadingProducts] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    const getCurrentTime = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     const getDefaultEndTime = () => {
         const now = new Date();
         const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         tomorrow.setMinutes(0, 0, 0);
         tomorrow.setHours(tomorrow.getHours() + 1);
 
-        // Format to YYYY-MM-DDTHH:mm for datetime-local input
         const year = tomorrow.getFullYear();
         const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
         const day = String(tomorrow.getDate()).padStart(2, '0');
@@ -20,32 +36,114 @@ const Admin = () => {
     };
 
     const [formData, setFormData] = useState({
+        productId: '',
         title: '',
         description: '',
         startPrice: '',
+        minIncrement: '50',
+        startTime: getCurrentTime(),
         endTime: getDefaultEndTime()
     });
 
+    const fetchProducts = async (force = false) => {
+        // Try to load from cache first if not forced
+        if (!force) {
+            const cached = localStorage.getItem('aura_products_cache');
+            if (cached) {
+                try {
+                    setProductsList(JSON.parse(cached));
+                    return;
+                } catch (e) {
+                    console.error('解析快取失敗:', e);
+                }
+            }
+        }
+
+        setLoadingProducts(true);
+        try {
+            const { data, error } = await supabase.functions.invoke("get-products", {
+                headers: {
+                    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                },
+            });
+            if (error) throw error;
+            setProductsList(data || []);
+            localStorage.setItem('aura_products_cache', JSON.stringify(data || []));
+        } catch (err) {
+            console.error('獲取產品清單失敗:', err);
+            alert('產品清單獲取失敗，請確認網路或後端 CORS 設定。');
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProducts();
+
+        // Close dropdown when clicking outside
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.autocomplete-container')) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    const filteredProducts = productsList.filter(p =>
+        p.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleProductSelect = (product) => {
+        setFormData({
+            ...formData,
+            productId: product.id,
+            title: product.name,
+        });
+        setSearchTerm(`${product.id} - ${product.name}`);
+        setShowDropdown(false);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.productId) {
+            alert('請選擇產品');
+            return;
+        }
+
+        setSubmitting(true);
         try {
+            const finalStartTime = formData.startTime ? new Date(formData.startTime) : new Date();
+            const finalEndTime = new Date(formData.endTime);
+
             const { error } = await supabase.rpc('create_auction', {
                 p_title: formData.title,
                 p_description: formData.description,
-                p_starting_price: Number(formData.startPrice),
-                p_end_time: formData.endTime
+                p_start_price: Number(formData.startPrice),
+                p_min_increment: Number(formData.minIncrement),
+                p_start_time: finalStartTime.toISOString(),
+                p_end_time: finalEndTime.toISOString(),
+                p_product_id: formData.productId
             });
             if (error) throw error;
 
             setFormData({
+                productId: '',
                 title: '',
                 description: '',
                 startPrice: '',
+                minIncrement: '50',
+                startTime: getCurrentTime(),
                 endTime: getDefaultEndTime()
             });
+            setSearchTerm('');
             alert('產品發佈成功！');
+            fetchAuctions();
         } catch (error) {
             alert('發佈失敗: ' + error.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -53,6 +151,52 @@ const Admin = () => {
         <div className="admin-container">
             <form className="admin-card glass-card" onSubmit={handleSubmit}>
                 <h2>新增競標產品</h2>
+
+                <div className="input-group">
+                    <label>產品 ({filteredProducts.length})</label>
+                    <div className="product-selection-header">
+                        <div className="autocomplete-container">
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="請輸入產品 ID 或名稱搜尋..."
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setShowDropdown(true);
+                                }}
+                                onFocus={() => setShowDropdown(true)}
+                            />
+                            {showDropdown && (
+                                <div className="dropdown-list">
+                                    {filteredProducts.length > 0 ? (
+                                        filteredProducts.map(p => (
+                                            <div
+                                                key={p.id}
+                                                className="dropdown-item"
+                                                onClick={() => handleProductSelect(p)}
+                                            >
+                                                {p.id} - {p.name}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="dropdown-item no-results">找無相關產品</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            className="refresh-btn"
+                            onClick={() => fetchProducts(true)}
+                            disabled={loadingProducts}
+                            title="重新整理清單"
+                        >
+                            {loadingProducts ? '...' : '刷新'}
+                        </button>
+                    </div>
+                </div>
+
                 <div className="input-group">
                     <label>產品標題</label>
                     <input
@@ -83,6 +227,26 @@ const Admin = () => {
                         />
                     </div>
                     <div className="input-group">
+                        <label>最小加價</label>
+                        <input
+                            type="number"
+                            value={formData.minIncrement}
+                            onChange={(e) => setFormData({ ...formData, minIncrement: e.target.value })}
+                            onWheel={(e) => e.target.blur()}
+                            required
+                        />
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="input-group">
+                        <label>競標起始時間 (選填)</label>
+                        <input
+                            type="datetime-local"
+                            value={formData.startTime}
+                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                        />
+                    </div>
+                    <div className="input-group">
                         <label>競標結束時間</label>
                         <input
                             type="datetime-local"
@@ -92,7 +256,9 @@ const Admin = () => {
                         />
                     </div>
                 </div>
-                <button type="submit" className="btn-primary w-full">發佈產品</button>
+                <button type="submit" className="btn-primary w-full" disabled={submitting}>
+                    {submitting ? '發佈中...' : '發佈產品'}
+                </button>
             </form>
 
             <div className="admin-card glass-card verify-section">

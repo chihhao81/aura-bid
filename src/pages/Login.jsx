@@ -8,6 +8,7 @@ const Login = () => {
     const [isSignUp, setIsSignUp] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [loading, setLoading] = useState(false);
     const { login, signup, resetPassword } = useAuth();
 
     const handleSubmit = async (e) => {
@@ -24,6 +25,7 @@ const Login = () => {
             return;
         }
 
+        setLoading(true);
         try {
             if (isSignUp) {
                 await signup(email, password);
@@ -34,6 +36,8 @@ const Login = () => {
             }
         } catch (err) {
             setErrorMsg(err.message || '驗證失敗，請檢查輸入資訊');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -112,8 +116,8 @@ const Login = () => {
 
                     {errorMsg && <p className="error-message">{errorMsg}</p>}
 
-                    <button type="submit" className="btn-primary w-full">
-                        {isSignUp ? '完成註冊' : '登入'}
+                    <button type="submit" className="btn-primary w-full" disabled={loading}>
+                        {loading ? '處理中...' : (isSignUp ? '完成註冊' : '登入')}
                     </button>
                 </form>
             </div>

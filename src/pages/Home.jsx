@@ -54,46 +54,59 @@ const Home = () => {
 
     return (
         <div className="home-container">
-            <div className="product-grid">
-                {products.map(product => {
-                    const currentPrice = product.bids.length > 0 ? product.bids[0].amount : product.startPrice;
-                    const isEnded = new Date(product.endTime) < new Date();
+            {products.length === 0 ? (
+                <div className="no-products-container glass-card">
+                    <p>目前沒有競標中的商品</p>
+                </div>
+            ) : (
+                <div className="product-grid">
+                    {products.map(product => {
+                        const currentPrice = product.bids.length > 0 ? product.bids[0].amount : product.startPrice;
+                        const parseUTC = (dateStr) => {
+                            if (!dateStr) return new Date();
+                            if (dateStr.includes('Z')) return new Date(dateStr);
+                            return new Date(dateStr.replace(' ', 'T') + 'Z');
+                        };
+                        const isEnded = product.status === 'ended' || parseUTC(product.endTime) < new Date();
+                        const isUpcoming = !isEnded && product.status === 'upcoming';
 
-                    return (
-                        <div key={product.id} className="product-card glass-card">
-                            <div className="product-image" style={{ backgroundImage: `url(${product.image})` }}>
-                                {isEnded && <div className="ended-overlay">已結束</div>}
+                        return (
+                            <div key={product.id} className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''}`}>
+                                <div className="product-image" style={{ backgroundImage: `url(${product.image})` }}>
+                                    {isUpcoming && <div className="status-overlay upcoming">即將開始</div>}
+                                    {isEnded && <div className="status-overlay ended">已結束</div>}
+                                </div>
+                                <div className="product-info">
+                                    <h3>{product.name}</h3>
+                                    <div className="price-info">
+                                        <span className="label">目前最高價</span>
+                                        <span className="amount">${currentPrice}</span>
+                                    </div>
+                                    <div className="meta-info">
+                                        <span>結束時間: {new Date(product.endTime).toLocaleString()}</span>
+                                        <span>最低加價: ${product.minIncrement}</span>
+                                    </div>
+
+                                    {user && !user.isAdmin && !isEnded && (
+                                        <button
+                                            className="btn-primary bid-btn"
+                                            onClick={() => handleBid(product.id, product.minIncrement, product.bids)}
+                                            disabled={cooldown[product.id]}
+                                        >
+                                            {cooldown[product.id] ? '深呼吸一下' : '我要出價'}
+                                        </button>
+                                    )}
+
+                                    <div className="bid-history">
+                                        <h4>出價紀錄</h4>
+                                        <BidHistory bids={product.bids} maskEmail={maskEmail} />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="product-info">
-                                <h3>{product.name}</h3>
-                                <div className="price-info">
-                                    <span className="label">目前最高價</span>
-                                    <span className="amount">${currentPrice}</span>
-                                </div>
-                                <div className="meta-info">
-                                    <span>結束時間: {new Date(product.endTime).toLocaleString()}</span>
-                                    <span>最低加價: ${product.minIncrement}</span>
-                                </div>
-
-                                {user && !user.isAdmin && !isEnded && (
-                                    <button
-                                        className="btn-primary bid-btn"
-                                        onClick={() => handleBid(product.id, product.minIncrement, product.bids)}
-                                        disabled={cooldown[product.id]}
-                                    >
-                                        {cooldown[product.id] ? '深呼吸一下' : '我要出價'}
-                                    </button>
-                                )}
-
-                                <div className="bid-history">
-                                    <h4>出價紀錄</h4>
-                                    <BidHistory bids={product.bids} maskEmail={maskEmail} />
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 };
