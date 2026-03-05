@@ -157,3 +157,131 @@
 .w-full {
     width: 100%;
 }
+
+.disclaimer-container {
+    margin-bottom: 1.5rem;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px dashed var(--border, #333);
+}
+
+.disclaimer-text {
+    font-size: 0.75rem !important;
+    line-height: 1.5 !important;
+    color: var(--text-muted, #888) !important;
+    text-align: justify !important;
+    margin-bottom: 0 !important;
+}
+
+.terms-checkbox-container {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.85rem !important;
+    color: var(--text-secondary) !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px !important;
+    height: 18px !important;
+    cursor: pointer;
+}
+
+.terms-link {
+    color: var(--accent-primary);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0 !important;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.modal-body section {
+    margin-bottom: 1.5rem;
+}
+
+.modal-body h4 {
+    margin-bottom: 0.5rem;
+    color: var(--accent-primary);
+}
+
+.modal-body p,
+.modal-body ul {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.modal-body ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+}

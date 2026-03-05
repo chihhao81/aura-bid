@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
                     role: data.role,
                     is_verified: data.is_verified,
                     is_banned: data.is_banned,
-                    line_group_name: data.line_group_name,
+                    line_group_name: data.line_group_display_name,
                     isAdmin: data.role === 'admin'
                 });
             }
