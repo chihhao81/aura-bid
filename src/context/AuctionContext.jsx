@@ -117,8 +117,8 @@ export const AuctionProvider = ({ children }) => {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'bids' },
                 async (payload) => {
-                    console.log('Bid Realtime Event:', payload);
                     const newBid = payload.new;
+                    console.log('Bid Realtime Event Received:', newBid);
 
                     // 1. 先處理通知 (副作用移出 setAuctions)
                     const targetAuction = auctionsRef.current.find(a => a.id === newBid.auction_id);
@@ -153,6 +153,21 @@ export const AuctionProvider = ({ children }) => {
                         }
                         return a;
                     }));
+
+                    // 3. 安全起見，主動再次拉取該拍賣的資料以更新 endTime (防止 UPDATE 事件延遲)
+                    const { data: latestAuction } = await supabase
+                        .from('auctions')
+                        .select('end_time, status')
+                        .eq('id', newBid.auction_id)
+                        .single();
+
+                    if (latestAuction) {
+                        setAuctions(prev => prev.map(a =>
+                            a.id === newBid.auction_id
+                                ? { ...a, endTime: ensureUTC(latestAuction.end_time), status: latestAuction.status }
+                                : a
+                        ));
+                    }
                 }
             )
             .subscribe();
@@ -165,6 +180,7 @@ export const AuctionProvider = ({ children }) => {
                 { event: 'UPDATE', schema: 'public', table: 'auctions' },
                 payload => {
                     const updatedAuction = payload.new;
+                    console.log('Auction Update Event Received:', updatedAuction);
 
                     // 1. 先處理通知
                     const oldAuction = auctionsRef.current.find(a => a.id === updatedAuction.id);

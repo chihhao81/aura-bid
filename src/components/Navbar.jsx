@@ -1,10 +1,11 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import pkg from '../../package.json';
 import './Navbar.css';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
-    const version = "0.0.1";
+    const version = pkg.version;
 
     return (
         <nav className="navbar glass-card">

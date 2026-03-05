@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
                 // Fallback to basic session user if profile fetch fails
                 setUser({ ...session.user, isAdmin: false });
             } else if (data.is_banned) {
-                alert('您的帳號已被停權，請聯繫管理員。');
+                alert('您的帳號已被停權，請聯繫Line官方帳號。');
                 await supabase.auth.signOut();
                 setUser(null);
             } else {

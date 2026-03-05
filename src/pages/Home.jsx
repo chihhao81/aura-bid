@@ -21,7 +21,7 @@ const Home = () => {
 
     const handleBid = async (auctionId, minIncrement, currentBids) => {
         if (!user.is_verified) {
-            alert('您尚未通過人工驗證，請聯繫管理員。');
+            alert('您尚未通過人工驗證，請聯繫Line官方帳號。\nLine Id: @056qctjm');
             return;
         }
 
@@ -75,50 +75,16 @@ const Home = () => {
                         const isUpcoming = !isEnded && (auction.status === 'upcoming' || parseUTC(auction.startTime) > new Date());
 
                         return (
-                            <div key={auction.id} className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''}`}>
-                                <div className="product-image" style={{ backgroundImage: `url(${auction.image})` }}>
-                                    {isUpcoming && <div className="status-overlay upcoming">即將開始</div>}
-                                    {isEnded && <div className="status-overlay ended">已結束</div>}
-                                </div>
-                                <div className="product-info">
-                                    <h3>{auction.name}</h3>
-                                    <div className="price-info">
-                                        <span className="label">
-                                            {isUpcoming ? '起標價格' : (isEnded ? '得標價' : '目前最高價')}
-                                        </span>
-                                        <span className="amount">${currentPrice}</span>
-                                    </div>
-                                    <div className="meta-info">
-                                        {isUpcoming && <span>開始時間: {new Date(auction.startTime).toLocaleString()}</span>}
-                                        <span>結束時間: {new Date(auction.endTime).toLocaleString()}</span>
-                                        <span>最低加價: ${auction.minIncrement}</span>
-                                    </div>
-
-                                    {isEnded && auction.bids.length > 0 && (
-                                        <div className="winner-announcement">
-                                            <p>🏆 恭喜：{auction.bids[0].line_group_name}</p>
-                                        </div>
-                                    )}
-
-                                    {user && !user.isAdmin && !isEnded && !isUpcoming && (
-                                        <button
-                                            className="btn-primary bid-btn"
-                                            onClick={() => handleBid(auction.id, auction.minIncrement, auction.bids)}
-                                            disabled={cooldown[auction.id]}
-                                        >
-                                            {cooldown[auction.id] ? '深呼吸一下' : '我要出價'}
-                                        </button>
-                                    )}
-
-                                    <div className="bid-history">
-                                        <h4>出價紀錄</h4>
-                                        <BidHistory
-                                            bids={auction.bids}
-                                            onShowAll={() => setHistoryModal({ show: true, bids: auction.bids, auctionName: auction.name })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                            <AuctionCard
+                                key={auction.id}
+                                auction={auction}
+                                user={user}
+                                isUpcoming={isUpcoming}
+                                isEnded={isEnded}
+                                handleBid={handleBid}
+                                cooldown={cooldown}
+                                setHistoryModal={setHistoryModal}
+                            />
                         );
                     })}
                 </div>
@@ -163,6 +129,107 @@ const Home = () => {
             )}
         </div>
     );
+};
+const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, setHistoryModal }) => {
+    const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.startPrice;
+    const [isTension, setIsTension] = useState(false);
+
+    return (
+        <div className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''} ${isTension ? 'tension-pulse' : ''}`}>
+            <div className="product-image" style={{ backgroundImage: `url(${auction.image})` }}>
+                {isUpcoming && <div className="status-overlay upcoming">即將開始</div>}
+                {isEnded && <div className="status-overlay ended">已結束</div>}
+            </div>
+            <div className="product-info">
+                <h3>{auction.name}</h3>
+                <div className="price-info">
+                    <span className="label">
+                        {isUpcoming ? '起標價格' : (isEnded ? '得標價' : '目前最高價')}
+                    </span>
+                    <span className="amount">${currentPrice}</span>
+                </div>
+                <div className="meta-info">
+                    {isUpcoming && <span>開始時間: {new Date(auction.startTime).toLocaleString()}</span>}
+                    {!isEnded && !isUpcoming && (
+                        <div className="countdown-wrapper">
+                            <span className="label">剩餘時間: </span>
+                            <CountdownTimer
+                                endTime={auction.endTime}
+                                onTensionChange={setIsTension}
+                            />
+                        </div>
+                    )}
+                    <span>結束時間: {new Date(auction.endTime).toLocaleString()}</span>
+                    <span>最低加價: ${auction.minIncrement}</span>
+                </div>
+
+                {isEnded && auction.bids.length > 0 && (
+                    <div className="winner-announcement">
+                        <p>🏆 恭喜：{auction.bids[0].line_group_name}</p>
+                    </div>
+                )}
+
+                {user && !user.isAdmin && !isEnded && !isUpcoming && (
+                    <button
+                        className="btn-primary bid-btn"
+                        onClick={() => handleBid(auction.id, auction.minIncrement, auction.bids)}
+                        disabled={cooldown[auction.id]}
+                    >
+                        {cooldown[auction.id] ? '深呼吸一下' : '我要出價'}
+                    </button>
+                )}
+
+                <div className="bid-history">
+                    <h4>出價紀錄</h4>
+                    <BidHistory
+                        bids={auction.bids}
+                        onShowAll={() => setHistoryModal({ show: true, bids: auction.bids, auctionName: auction.name })}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CountdownTimer = ({ endTime, onTensionChange }) => {
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        const updateTimer = () => {
+            const now = new Date();
+            const end = new Date(endTime.replace(' ', 'T') + (endTime.includes('Z') ? '' : 'Z'));
+            const diff = end - now;
+
+            if (diff <= 0) {
+                setTimeLeft('已結束');
+                onTensionChange(false);
+                return;
+            }
+
+            // Check for tension (less than 1 minute)
+            if (diff < 60000) {
+                onTensionChange(true);
+            } else {
+                onTensionChange(false);
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            let timeStr = '';
+            if (days > 0) timeStr += `${days}天 `;
+            timeStr += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            setTimeLeft(timeStr);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [endTime, onTensionChange]);
+
+    return <span className={`timer-text ${timeLeft === '已結束' ? 'ended' : ''}`}>{timeLeft}</span>;
 };
 
 const BidHistory = ({ bids, onShowAll }) => {
