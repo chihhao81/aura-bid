@@ -66,8 +66,26 @@
 }
 
 .product-info h3 {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     font-size: 1.25rem;
+}
+
+.product-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.product-description:hover {
+    color: var(--accent-secondary);
 }
 
 .price-info {
@@ -207,12 +225,19 @@
     margin-top: 2px;
 }
 
-.history-modal {
+.history-modal,
+.desc-modal {
     max-width: 500px;
     width: 90%;
     max-height: 80vh;
     display: flex;
     flex-direction: column;
+}
+
+.full-description {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: var(--text-primary);
 }
 
 .history-modal .modal-body {

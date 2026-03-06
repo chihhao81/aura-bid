@@ -8,6 +8,7 @@ const Home = () => {
     const { user } = useAuth();
     const [cooldown, setCooldown] = useState({});
     const [historyModal, setHistoryModal] = useState({ show: false, bids: [], auctionName: '' });
+    const [descModal, setDescModal] = useState({ show: false, content: '', title: '' });
 
     const maskEmail = (email) => {
         if (!email) return '系統用戶';
@@ -84,6 +85,7 @@ const Home = () => {
                                 handleBid={handleBid}
                                 cooldown={cooldown}
                                 setHistoryModal={setHistoryModal}
+                                setDescModal={setDescModal}
                             />
                         );
                     })}
@@ -127,10 +129,29 @@ const Home = () => {
                     </div>
                 </div>
             )}
+
+            {descModal.show && (
+                <div className="modal-overlay" onClick={() => setDescModal({ ...descModal, show: false })}>
+                    <div className="modal-content glass-card desc-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>{descModal.title} - 商品詳情</h3>
+                            <button className="close-btn" onClick={() => setDescModal({ ...descModal, show: false })}>&times;</button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="full-description">
+                                {descModal.content}
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn-primary" onClick={() => setDescModal({ ...descModal, show: false })}>關閉</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, setHistoryModal }) => {
+const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, setHistoryModal, setDescModal }) => {
     const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.startPrice;
     const [isTension, setIsTension] = useState(false);
 
@@ -142,6 +163,14 @@ const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, 
             </div>
             <div className="product-info">
                 <h3>{auction.name}</h3>
+                {auction.description && (
+                    <div
+                        className="product-description"
+                        onClick={() => setDescModal({ show: true, content: auction.description, title: auction.name })}
+                    >
+                        {auction.description}
+                    </div>
+                )}
                 <div className="price-info">
                     <span className="label">
                         {isUpcoming ? '起標價格' : (isEnded ? '得標價' : '目前最高價')}
