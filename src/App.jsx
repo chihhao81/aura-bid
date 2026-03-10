@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import LoginError from './pages/LoginError';
 import Admin from './pages/Admin';
 import ResetPassword from './pages/ResetPassword';
 import { useAuth } from './context/AuthContext';
@@ -31,6 +32,7 @@ function App() {
               )
             } />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/login-error" element={<LoginError />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

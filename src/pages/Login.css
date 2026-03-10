@@ -206,3 +206,62 @@
     cursor: not-allowed;
     filter: grayscale(0.5);
 }
+
+/* LINE Login */
+.login-divider {
+    display: flex;
+    align-items: center;
+    margin: 1.5rem 0;
+    gap: 1rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border, #333);
+}
+
+.login-divider span {
+    font-size: 0.85rem;
+    color: var(--text-muted, #888);
+    white-space: nowrap;
+}
+
+.btn-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1rem;
+    background: #06C755;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.btn-line:hover {
+    background: #05b04c;
+}
+
+.btn-line:active {
+    transform: scale(0.98);
+}
+
+.line-icon {
+    width: 22px;
+    height: 22px;
+}
+
+/* Login Error */
+.login-error-icon {
+    font-size: 3.5rem;
+    color: #ff4d4d;
+    margin-bottom: 1rem;
+    line-height: 1;
+}

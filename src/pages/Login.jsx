@@ -14,6 +14,20 @@ const Login = () => {
     const [agreed, setAgreed] = useState(false);
     const { login, signup, resetPassword } = useAuth();
 
+    const handleLineLogin = () => {
+        const state = crypto.randomUUID();
+        sessionStorage.setItem('line_login_state', state);
+        const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/line-callback`;
+        const lineAuthUrl =
+            `https://access.line.me/oauth2/v2.1/authorize` +
+            `?response_type=code` +
+            `&client_id=2009342089` +
+            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+            `&state=${state}` +
+            `&scope=profile%20openid%20email`;
+        window.location.href = lineAuthUrl;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg('');
@@ -142,6 +156,25 @@ const Login = () => {
                         {loading ? '處理中...' : (isSignUp ? '完成註冊' : '登入')}
                     </button>
                 </form>
+
+                {!isSignUp && (
+                    <>
+                        <div className="login-divider">
+                            <span>或</span>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="btn-line w-full"
+                            onClick={handleLineLogin}
+                        >
+                            <svg className="line-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2C6.48 2 2 5.82 2 10.5c0 4.21 3.74 7.74 8.79 8.4.34.07.81.23.93.52.1.27.07.68.03.95l-.15.91c-.05.27-.21 1.07.94.58 1.14-.49 6.17-3.63 8.42-6.22C22.88 13.41 22 11.62 22 10.5 22 5.82 17.52 2 12 2zm-3.06 11.12H6.87a.53.53 0 01-.53-.53V8.53c0-.29.24-.53.53-.53s.53.24.53.53v3.53h1.54c.29 0 .53.24.53.53s-.24.53-.53.53zm1.9-.53a.53.53 0 01-1.06 0V8.53a.53.53 0 011.06 0v4.06zm4.14 0a.53.53 0 01-.4.51.53.53 0 01-.52-.19l-2.1-2.86v2.54a.53.53 0 01-1.06 0V8.53a.53.53 0 01.4-.51.53.53 0 01.53.19l2.09 2.85V8.53a.53.53 0 011.06 0v4.06zm3.16-2.53a.53.53 0 010 1.06h-1.54v1h1.54a.53.53 0 010 1.06h-2.07a.53.53 0 01-.53-.53V8.53c0-.29.24-.53.53-.53h2.07a.53.53 0 010 1.06h-1.54v1h1.54z" />
+                            </svg>
+                            LINE 登入
+                        </button>
+                    </>
+                )}
             </div>
 
             <TermsModal show={showTerms} onClose={() => setShowTerms(false)} />
