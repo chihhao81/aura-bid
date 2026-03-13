@@ -21,7 +21,7 @@ const Login = () => {
         const lineAuthUrl =
             `https://access.line.me/oauth2/v2.1/authorize` +
             `?response_type=code` +
-            `&client_id=2009398308` +
+            `&client_id=2009342089` +
             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
             `&state=${state}` +
             `&scope=profile%20openid%20email`;

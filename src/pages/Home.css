@@ -109,11 +109,11 @@
 }
 
 .meta-info {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+    font-size: 0.95rem; /* 稍微放大 */
+    color: var(--text-secondary); /* 從 muted 改為 secondary，更深更清晰 */
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px; /* 增加一點間距 */
     margin-bottom: 1.5rem;
 }
 
@@ -374,6 +374,12 @@
     justify-content: space-between;
     align-items: center;
     animation: slideUp 0.3s ease-out;
+    cursor: pointer; /* 增加點擊手勢 */
+    transition: transform 0.2s;
+}
+
+.toast-item:active {
+    transform: scale(0.98);
 }
 
 .toast-item.success {

@@ -9,6 +9,7 @@ const Home = () => {
     const [cooldown, setCooldown] = useState({});
     const [historyModal, setHistoryModal] = useState({ show: false, bids: [], auctionName: '' });
     const [descModal, setDescModal] = useState({ show: false, content: '', title: '' });
+    const [bidModal, setBidModal] = useState({ show: false, auctionId: null, auctionName: '', minBid: 0 });
 
     const maskEmail = (email) => {
         if (!email) return '系統用戶';
@@ -20,7 +21,7 @@ const Home = () => {
         return parts[0].slice(0, -5) + '*****@' + parts[1];
     };
 
-    const handleBid = async (auctionId, minIncrement, currentBids) => {
+    const handleBid = (auctionId, minIncrement, currentBids) => {
         if (!user.is_verified) {
             alert('您尚未通過人工驗證，請聯繫Line官方帳號。\nLine Id: @056qctjm');
             return;
@@ -35,23 +36,27 @@ const Home = () => {
         const currentPrice = currentBids.length > 0 ? currentBids[0].amount : auction.startPrice;
         const minBid = currentPrice + minIncrement;
 
-        const amount = prompt(`請輸入出價金額 (最低 ${minBid}):`, minBid);
+        setBidModal({
+            show: true,
+            auctionId,
+            auctionName: auction.name,
+            minBid
+        });
+    };
 
-        if (amount && Number(amount) >= minBid) {
-            try {
-                await placeBid(auctionId, Number(amount));
-                // Fallback: manually fetch if realtime is slow
-                await fetchAuctions();
+    const submitBid = async (amount) => {
+        const { auctionId } = bidModal;
+        try {
+            await placeBid(auctionId, Number(amount));
+            await fetchAuctions();
 
-                setCooldown(prev => ({ ...prev, [auctionId]: true }));
-                setTimeout(() => {
-                    setCooldown(prev => ({ ...prev, [auctionId]: false }));
-                }, 5000);
-            } catch (err) {
-                alert(err.message || '出價失敗，請稍後再試');
-            }
-        } else if (amount) {
-            alert('金額不足！');
+            setCooldown(prev => ({ ...prev, [auctionId]: true }));
+            setTimeout(() => {
+                setCooldown(prev => ({ ...prev, [auctionId]: false }));
+            }, 5000);
+            setBidModal({ ...bidModal, show: false });
+        } catch (err) {
+            alert(err.message || '出價失敗，請稍後再試');
         }
     };
 
@@ -148,6 +153,15 @@ const Home = () => {
                     </div>
                 </div>
             )}
+
+            {bidModal.show && (
+                <BidModal
+                    auctionName={bidModal.auctionName}
+                    minBid={bidModal.minBid}
+                    onClose={() => setBidModal({ ...bidModal, show: false })}
+                    onSubmit={submitBid}
+                />
+            )}
         </div>
     );
 };
@@ -156,7 +170,7 @@ const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, 
     const [isTension, setIsTension] = useState(false);
 
     return (
-        <div className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''} ${isTension ? 'tension-pulse' : ''}`}>
+        <div id={`auction-${auction.id}`} className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''} ${isTension ? 'tension-pulse' : ''}`}>
             <div className="product-image" style={{ backgroundImage: `url(${auction.image})` }}>
                 {isUpcoming && <div className="status-overlay upcoming">即將開始</div>}
                 {isEnded && <div className="status-overlay ended">已結束</div>}
@@ -259,6 +273,54 @@ const CountdownTimer = ({ endTime, onTensionChange }) => {
     }, [endTime, onTensionChange]);
 
     return <span className={`timer-text ${timeLeft === '已結束' ? 'ended' : ''}`}>{timeLeft}</span>;
+};
+
+const BidModal = ({ auctionName, minBid, onClose, onSubmit }) => {
+    const [amount, setAmount] = useState(minBid);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (Number(amount) < minBid) {
+            alert('金額不足！');
+            return;
+        }
+        onSubmit(amount);
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content glass-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+                <div className="modal-header">
+                    <h3>我要出價</h3>
+                    <button className="close-btn" onClick={onClose}>&times;</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body">
+                        <p style={{ marginBottom: '1rem' }}>商品：<strong>{auctionName}</strong></p>
+                        <div className="input-group">
+                            <label>請輸入出價金額 (最低 ${minBid})</label>
+                            <input
+                                type="number"
+                                inputMode="decimal"
+                                pattern="[0-9]*"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                onWheel={(e) => e.target.blur()} // 禁用滾輪調節
+                                min={minBid}
+                                required
+                                autoFocus
+                                style={{ fontSize: '1.2rem', padding: '0.8rem' }}
+                            />
+                        </div>
+                    </div>
+                    <div className="modal-footer" style={{ gap: '1rem', display: 'flex' }}>
+                        <button type="button" className="btn-secondary" onClick={onClose} style={{ flex: 1 }}>取消</button>
+                        <button type="submit" className="btn-primary" style={{ flex: 1 }}>確認出價</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 };
 
 const BidHistory = ({ bids, onShowAll }) => {

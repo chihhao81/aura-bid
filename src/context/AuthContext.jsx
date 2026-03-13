@@ -61,7 +61,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     const signup = async (email, password) => {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                emailRedirectTo: window.location.origin + '/aura-bid/',
+            },
+        });
         if (error) throw error;
     };
 
@@ -71,7 +77,7 @@ export const AuthProvider = ({ children }) => {
 
     const resetPassword = async (email) => {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/reset-password',
+            redirectTo: window.location.origin + '/aura-bid/reset-password',
         });
         if (error) throw error;
     };

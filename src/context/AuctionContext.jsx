@@ -16,9 +16,12 @@ export const AuctionProvider = ({ children }) => {
         audio.play().catch(e => console.log('Sound play error:', e));
     };
 
-    const addNotification = (message, type = 'info') => {
+    const addNotification = (message, type = 'info', auctionId = null) => {
         const id = Date.now();
-        setNotifications(prev => [...prev, { id, message, type }]);
+        setNotifications(prev => {
+            const updated = [...prev, { id, message, type, auctionId }];
+            return updated.slice(-3); // 只保留最後 3 個通知
+        });
         playNotificationSound();
     };
 
@@ -125,7 +128,7 @@ export const AuctionProvider = ({ children }) => {
                     if (targetAuction && user && newBid.user_id !== user.id) {
                         const userHasBid = targetAuction.bids.some(b => b.email === user.id);
                         if (userHasBid) {
-                            addNotification(`通知：拍賣「${targetAuction.name}」有了新的出價 $${newBid.bid_amount}，您已被超標！`, 'warning');
+                            addNotification(`通知：拍賣「${targetAuction.name}」有了新的出價 $${newBid.bid_amount}，您已被超標！`, 'warning', targetAuction.id);
                         }
                     }
 
@@ -253,9 +256,30 @@ export const AuctionProvider = ({ children }) => {
             {children}
             <div className="toast-container">
                 {notifications.map(n => (
-                    <div key={n.id} className={`toast-item ${n.type}`}>
+                    <div 
+                        key={n.id} 
+                        className={`toast-item ${n.type}`}
+                        onClick={() => {
+                            if (n.auctionId) {
+                                const el = document.getElementById(`auction-${n.auctionId}`);
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    // 增加一個短暫的高亮效果或移除通知
+                                    removeNotification(n.id);
+                                }
+                            }
+                        }}
+                    >
                         <div className="toast-content">{n.message}</div>
-                        <button className="toast-close" onClick={() => removeNotification(n.id)}>&times;</button>
+                        <button 
+                            className="toast-close" 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                removeNotification(n.id);
+                            }}
+                        >
+                            &times;
+                        </button>
                     </div>
                 ))}
             </div>

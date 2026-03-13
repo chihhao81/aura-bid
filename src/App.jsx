@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -16,7 +16,7 @@ function App() {
   if (loading) return <div className="loading-screen">Loading...</div>;
 
   return (
-    <HashRouter>
+    <BrowserRouter basename="/aura-bid">
       <div className="app">
         <Navbar />
         <main>
@@ -38,7 +38,7 @@ function App() {
         </main>
         {user && <Footer />}
       </div>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 
