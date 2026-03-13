@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
             email,
             password,
             options: {
-                emailRedirectTo: window.location.origin + '/aura-bid/',
+                emailRedirectTo: window.location.origin + (import.meta.env.VITE_BASE_PATH || '/'),
             },
         });
         if (error) throw error;
@@ -76,8 +76,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const resetPassword = async (email) => {
+        const basePath = import.meta.env.VITE_BASE_PATH || '/';
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/aura-bid/reset-password',
+            redirectTo: window.location.origin + basePath + (basePath.endsWith('/') ? '' : '/') + 'reset-password',
         });
         if (error) throw error;
     };
