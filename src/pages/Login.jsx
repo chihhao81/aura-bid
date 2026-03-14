@@ -16,15 +16,19 @@ const Login = () => {
 
     const handleLineLogin = () => {
         const state = crypto.randomUUID();
-        sessionStorage.setItem('line_login_state', state);
+        localStorage.setItem('line_login_state', state);
+
         const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/line-callback`;
-        const lineAuthUrl =
-            `https://access.line.me/oauth2/v2.1/authorize` +
-            `?response_type=code` +
-            `&client_id=2009342089` +
-            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-            `&state=${state}` +
-            `&scope=profile%20openid%20email`;
+
+        const params = new URLSearchParams({
+            response_type: 'code',
+            client_id: '2009342089',
+            redirect_uri: redirectUri,
+            state: state,
+            scope: 'profile openid email'
+        });
+
+        const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
         window.location.href = lineAuthUrl;
     };
 

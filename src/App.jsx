@@ -16,7 +16,7 @@ function App() {
   if (loading) return <div className="loading-screen">Loading...</div>;
 
   return (
-    <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || '/'}>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <div className="app">
         <Navbar />
         <main>
