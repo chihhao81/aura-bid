@@ -21,7 +21,7 @@ const Navbar = () => {
                 {user ? (
                     <>
                         <span className="user-email">
-                            {user.line_group_name ? `${user.line_group_name} (${user.email})` : user.email}
+                            {user.line_group_name || user.line_name || '使用者'}
                         </span>
                         {user.isAdmin && <span className="badge-admin">Admin</span>}
                         <button onClick={logout} className="btn-logout">登出</button>
