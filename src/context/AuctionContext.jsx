@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from './AuthContext';
+import { SUPABASE_URL } from '../utils/envConfig';
 
 const AuctionContext = createContext();
 
@@ -61,7 +62,7 @@ export const AuctionProvider = ({ children }) => {
                 .select('id, line_group_display_name')
                 .in('id', userIds);
 
-            const STORAGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/product_images`;
+            const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/product_images`;
 
             const formattedAuctions = auctionsData.map(a => {
                 return {

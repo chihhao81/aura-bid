@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useAuction } from '../context/AuctionContext';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
@@ -10,6 +10,7 @@ const Home = () => {
     const [historyModal, setHistoryModal] = useState({ show: false, bids: [], auctionName: '' });
     const [descModal, setDescModal] = useState({ show: false, content: '', title: '' });
     const [bidModal, setBidModal] = useState({ show: false, auctionId: null, auctionName: '', minBid: 0 });
+    const [verifyModal, setVerifyModal] = useState({ show: false });
 
     const maskEmail = (email) => {
         if (!email) return '系統用戶';
@@ -21,9 +22,9 @@ const Home = () => {
         return parts[0].slice(0, -5) + '*****@' + parts[1];
     };
 
-    const handleBid = (auctionId, minIncrement, currentBids) => {
-        if (!user.is_verified) {
-            alert('您尚未通過人工驗證，請聯繫Line官方帳號。\nLine Id: @056qctjm');
+    const handleBid = useCallback((auctionId, minIncrement, currentBids) => {
+        if (!user?.is_verified) {
+            setVerifyModal({ show: true });
             return;
         }
 
@@ -42,7 +43,7 @@ const Home = () => {
             auctionName: auction.name,
             minBid
         });
-    };
+    }, [user?.is_verified, cooldown, auctions]);
 
     const submitBid = async (amount) => {
         const { auctionId } = bidModal;
@@ -98,41 +99,11 @@ const Home = () => {
             )}
 
             {historyModal.show && (
-                <div className="modal-overlay" onClick={() => setHistoryModal({ ...historyModal, show: false })}>
-                    <div className="modal-content glass-card history-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>{historyModal.auctionName} - 完整出價紀錄</h3>
-                            <button className="close-btn" onClick={() => setHistoryModal({ ...historyModal, show: false })}>&times;</button>
-                        </div>
-                        <div className="modal-body">
-                            <table className="history-table">
-                                <thead>
-                                    <tr>
-                                        <th>出價者</th>
-                                        <th>時間</th>
-                                        <th>金額</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {historyModal.bids.map((bid, i) => (
-                                        <tr key={i}>
-                                            <td>
-                                                <div className="bidder-info">
-                                                    <span className="group-name-detail">{bid.line_group_name}</span>
-                                                </div>
-                                            </td>
-                                            <td>{new Date(bid.time).toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
-                                            <td className="price-detail">${bid.amount}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn-primary" onClick={() => setHistoryModal({ ...historyModal, show: false })}>關閉</button>
-                        </div>
-                    </div>
-                </div>
+                <HistoryModal
+                    auctionName={historyModal.auctionName}
+                    bids={historyModal.bids}
+                    onClose={() => setHistoryModal({ ...historyModal, show: false })}
+                />
             )}
 
             {descModal.show && (
@@ -162,10 +133,37 @@ const Home = () => {
                     onSubmit={submitBid}
                 />
             )}
+
+            {verifyModal.show && (
+                <div className="modal-overlay" onClick={() => setVerifyModal({ show: false })}>
+                    <div className="modal-content glass-card desc-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px', textAlign: 'center' }}>
+                        <div className="modal-header">
+                            <h3 style={{ color: '#ff4d4f' }}>驗證提示</h3>
+                            <button className="close-btn" onClick={() => setVerifyModal({ show: false })}>&times;</button>
+                        </div>
+                        <div className="modal-body">
+                            <h4 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#fff' }}>您尚未通過人工驗證，請聯繫Line官方帳號。</h4>
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px', margin: '1rem 0' }}>
+                                <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
+                                    <a href="https://lin.ee/29HRA8aF" target="_blank" rel="noreferrer" style={{ color: '#00B900', textDecoration: 'none', fontWeight: 'bold' }}>
+                                        👉 加入連結 | https://lin.ee/29HRA8aF
+                                    </a>
+                                </p>
+                                <p style={{ marginBottom: '0.5rem', color: '#ccc' }}>或掃QR code</p>
+                                <img src="https://qr-official.line.me/gs/M_056qctjm_GW.png" alt="Line QR Code" style={{ width: '150px', height: '150px', borderRadius: '8px', marginBottom: '1rem', background: '#fff', padding: '5px' }} />
+                            </div>
+                            <p style={{ color: '#888', fontSize: '0.9rem' }}>如果連接失效，請直接搜尋Line ID <strong style={{ color: '#fff' }}>@056qctjm</strong></p>
+                        </div>
+                        <div className="modal-footer" style={{ justifyContent: 'center' }}>
+                            <button className="btn-primary" onClick={() => setVerifyModal({ show: false })}>我知道了</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, setHistoryModal, setDescModal }) => {
+const AuctionCard = memo(({ auction, user, isUpcoming, isEnded, handleBid, cooldown, setHistoryModal, setDescModal }) => {
     const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.startPrice;
     const [isTension, setIsTension] = useState(false);
 
@@ -232,7 +230,17 @@ const AuctionCard = ({ auction, user, isUpcoming, isEnded, handleBid, cooldown, 
             </div>
         </div>
     );
-};
+}, (prevProps, nextProps) => {
+    // Custom comparison function for React.memo to prevent unnecessary re-renders
+    return (
+        prevProps.auction.id === nextProps.auction.id &&
+        prevProps.auction.bids.length === nextProps.auction.bids.length &&
+        prevProps.auction.status === nextProps.auction.status &&
+        prevProps.isUpcoming === nextProps.isUpcoming &&
+        prevProps.isEnded === nextProps.isEnded &&
+        prevProps.cooldown[prevProps.auction.id] === nextProps.cooldown[nextProps.auction.id]
+    );
+});
 
 const CountdownTimer = ({ endTime, onTensionChange }) => {
     const [timeLeft, setTimeLeft] = useState('');
@@ -323,7 +331,7 @@ const BidModal = ({ auctionName, minBid, onClose, onSubmit }) => {
     );
 };
 
-const BidHistory = ({ bids, onShowAll }) => {
+const BidHistory = memo(({ bids, onShowAll }) => {
     const displayBids = bids.slice(0, 3);
 
     if (bids.length === 0) return <p className="no-bids">暫無出價</p>;
@@ -332,7 +340,7 @@ const BidHistory = ({ bids, onShowAll }) => {
         <div className="history-list-wrapper">
             <div className="history-list">
                 {displayBids.map((bid, i) => (
-                    <div key={i} className="history-item">
+                    <div key={bid.id || i} className="history-item">
                         <span className="bidder">
                             <span className="group-name-only">{bid.line_group_name}</span>
                         </span>
@@ -351,6 +359,80 @@ const BidHistory = ({ bids, onShowAll }) => {
             )}
         </div>
     );
+}, (prevProps, nextProps) => {
+    return prevProps.bids.length === nextProps.bids.length;
+});
+
+const HistoryModal = ({ auctionName, bids, onClose }) => {
+    const [visibleCount, setVisibleCount] = useState(20);
+    const scrollTimeoutRef = React.useRef(null);
+
+    const handleScroll = useCallback((e) => {
+        if (scrollTimeoutRef.current) return; // Throttle scrolling
+
+        const { scrollTop, scrollHeight, clientHeight } = e.target;
+        
+        scrollTimeoutRef.current = setTimeout(() => {
+            if (scrollHeight - scrollTop <= clientHeight + 150) {
+                if (visibleCount < bids.length) {
+                    setVisibleCount(prev => Math.min(prev + 20, bids.length));
+                }
+            }
+            scrollTimeoutRef.current = null;
+        }, 100); // Check every 100ms max
+    }, [visibleCount, bids.length]);
+
+    // Use memo to prevent re-rendering identical rows
+    const renderedBids = React.useMemo(() => {
+        return bids.slice(0, visibleCount).map((bid, i) => (
+            <HistoryRow key={bid.id || i} bid={bid} />
+        ));
+    }, [bids, visibleCount]);
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content glass-card history-modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>{auctionName} - 完整出價紀錄</h3>
+                    <button className="close-btn" onClick={onClose}>&times;</button>
+                </div>
+                <div className="modal-body" onScroll={handleScroll} style={{ overflowY: 'auto', maxHeight: '60vh' }}>
+                    <table className="history-table">
+                        <thead>
+                            <tr>
+                                <th>出價者</th>
+                                <th>時間</th>
+                                <th>金額</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {renderedBids}
+                        </tbody>
+                    </table>
+                    {visibleCount < bids.length && (
+                        <div style={{ textAlign: 'center', padding: '10px 0', color: '#888' }}>向下滾動加載更多...</div>
+                    )}
+                </div>
+                <div className="modal-footer">
+                    <button className="btn-primary" onClick={onClose}>關閉</button>
+                </div>
+            </div>
+        </div>
+    );
 };
+
+const HistoryRow = memo(({ bid }) => {
+    return (
+        <tr>
+            <td>
+                <div className="bidder-info">
+                    <span className="group-name-detail">{bid.line_group_name}</span>
+                </div>
+            </td>
+            <td>{new Date(bid.time).toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+            <td className="price-detail">${bid.amount}</td>
+        </tr>
+    );
+});
 
 export default Home;

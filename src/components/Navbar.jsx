@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import pkg from '../../package.json';
+import { isTestEnv } from '../utils/envConfig';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -10,7 +11,10 @@ const Navbar = () => {
     return (
         <nav className="navbar glass-card">
             <div className="nav-brand">
-                <h1><span>鼠婦棲地</span></h1>
+                <h1>
+                    <span>鼠婦棲地</span>
+                    {isTestEnv && <span className="test-badge" style={{ color: '#ff4d4f', fontSize: '0.6em', marginLeft: '10px', verticalAlign: 'middle', border: '1px solid #ff4d4f', padding: '2px 6px', borderRadius: '4px' }}>測試台</span>}
+                </h1>
                 <span className="version">v{version}</span>
             </div>
             <div className="nav-actions">

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import TermsModal from '../components/TermsModal';
+import { SUPABASE_URL, LINE_CLIENT_ID } from '../utils/envConfig';
 import './Login.css';
 
 const Login = () => {
@@ -8,7 +9,7 @@ const Login = () => {
     const [showTerms, setShowTerms] = useState(false);
     
     // 暗門狀態：是否顯示原本的 Email 登入/註冊介面
-    const [showLegacyLogin, setShowLegacyLogin] = useState(false);
+    const [showLegacyLogin, setShowLegacyLogin] = useState(true);
 
     // --- 原本的 Email/Pwd 狀態與邏輯 ---
     const [email, setEmail] = useState('');
@@ -29,11 +30,11 @@ const Login = () => {
         const state = crypto.randomUUID();
         localStorage.setItem('line_login_state', state);
 
-        const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/line-callback`;
+        const redirectUri = `${SUPABASE_URL}/functions/v1/line-callback`;
 
         const params = new URLSearchParams({
             response_type: 'code',
-            client_id: '2009342089',
+            client_id: LINE_CLIENT_ID,
             redirect_uri: redirectUri,
             state: state,
             scope: 'profile openid email'

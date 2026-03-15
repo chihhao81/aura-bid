@@ -234,6 +234,13 @@
     flex-direction: column;
 }
 
+/* 移除 CSS blur 以解決大量清單滾動時的 GPU 卡頓問題 */
+.history-modal.glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg-secondary);
+}
+
 .full-description {
     white-space: pre-wrap;
     line-height: 1.6;
