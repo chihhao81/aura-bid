@@ -3,6 +3,12 @@ import { useAuction } from '../context/AuctionContext';
 import { supabase } from '../utils/supabaseClient';
 import './Admin.css';
 
+export const PRODUCT_SIZES = [
+    { id: '0', value: '0.3cm以上' },
+    { id: '1', value: '0.5cm以上' },
+    { id: '2', value: '亞成成體' }
+];
+
 const Admin = () => {
     const { addProduct, fetchAuctions } = useAuction();
     const [productsList, setProductsList] = useState([]);
@@ -39,11 +45,56 @@ const Admin = () => {
         productId: '',
         title: '',
         description: '',
-        startPrice: '',
+        startPrice: '0',
         minIncrement: '50',
         startTime: getCurrentTime(),
-        endTime: getDefaultEndTime()
+        endTime: getDefaultEndTime(),
+        productSize: '0',
+        quantity: 1,
+        paymentAccountId: localStorage.getItem('aura_last_payment_account') || ''
     });
+
+    const [paymentAccountsList, setPaymentAccountsList] = useState([]);
+    const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+    const fetchPaymentAccounts = async (force = false) => {
+        if (!force) {
+            const cached = localStorage.getItem('aura_payment_accounts_cache');
+            if (cached) {
+                try {
+                    setPaymentAccountsList(JSON.parse(cached));
+                    return;
+                } catch (e) {
+                    console.error('解析匯款帳號快取失敗:', e);
+                }
+            }
+        }
+
+        setLoadingAccounts(true);
+        try {
+            const { data, error } = await supabase
+                .from('payment_accounts')
+                .select('*')
+                .eq('is_active', true);
+
+            if (error) throw error;
+            setPaymentAccountsList(data || []);
+            localStorage.setItem('aura_payment_accounts_cache', JSON.stringify(data || []));
+
+            if (data && data.length > 0) {
+                const currentSaved = localStorage.getItem('aura_last_payment_account');
+                const exists = data.find(acc => acc.id === currentSaved);
+                if (!exists) {
+                    setFormData(prev => ({ ...prev, paymentAccountId: data[0].id }));
+                }
+            }
+        } catch (err) {
+            console.error('獲取匯款帳號清單失敗:', err);
+            alert('匯款帳號清單獲取失敗。');
+        } finally {
+            setLoadingAccounts(false);
+        }
+    };
 
     const fetchProducts = async (force = false) => {
         // Try to load from cache first if not forced
@@ -79,6 +130,7 @@ const Admin = () => {
 
     useEffect(() => {
         fetchProducts();
+        fetchPaymentAccounts();
 
         // Close dropdown when clicking outside
         const handleClickOutside = (e) => {
@@ -111,20 +163,31 @@ const Admin = () => {
             alert('請選擇產品');
             return;
         }
+        if (!formData.paymentAccountId) {
+            alert('請選擇匯款帳號');
+            return;
+        }
 
         setSubmitting(true);
         try {
             const finalStartTime = formData.startTime ? new Date(formData.startTime) : new Date();
             const finalEndTime = new Date(formData.endTime);
 
+            if (formData.paymentAccountId) {
+                localStorage.setItem('aura_last_payment_account', formData.paymentAccountId);
+            }
+
             const { error } = await supabase.rpc('create_auction', {
-                p_title: formData.title,
-                p_description: formData.description,
+                p_description: formData.description || '',
                 p_start_price: Number(formData.startPrice),
                 p_min_increment: Number(formData.minIncrement),
                 p_start_time: finalStartTime.toISOString(),
                 p_end_time: finalEndTime.toISOString(),
-                p_product_id: formData.productId
+                p_product_id: String(formData.productId),
+                p_product_name: String(formData.title),
+                p_product_size: String(formData.productSize),
+                p_quantity: Number(formData.quantity),
+                p_payment_account_id: String(formData.paymentAccountId)
             });
             if (error) throw error;
 
@@ -132,10 +195,13 @@ const Admin = () => {
                 productId: '',
                 title: '',
                 description: '',
-                startPrice: '',
+                startPrice: '0',
                 minIncrement: '50',
                 startTime: getCurrentTime(),
-                endTime: getDefaultEndTime()
+                endTime: getDefaultEndTime(),
+                productSize: '0',
+                quantity: 1,
+                paymentAccountId: localStorage.getItem('aura_last_payment_account') || ''
             });
             setSearchTerm('');
             alert('產品發佈成功！');
@@ -197,15 +263,66 @@ const Admin = () => {
                     </div>
                 </div>
 
-                <div className="input-group">
-                    <label>產品標題</label>
-                    <input
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                    />
+                <div className="row">
+                    <div className="input-group">
+                        <label>尺寸</label>
+                        <select
+                            value={formData.productSize}
+                            onChange={(e) => setFormData({ ...formData, productSize: e.target.value })}
+                            required
+                        >
+                            {PRODUCT_SIZES.map(size => (
+                                <option key={size.id} value={size.id}>
+                                    {size.value}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="input-group">
+                        <label>數量</label>
+                        <input
+                            type="number"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+                            onWheel={(e) => e.target.blur()}
+                            min="1"
+                            required
+                        />
+                    </div>
                 </div>
+
+                <div className="input-group">
+                    <label>匯款帳號</label>
+                    <div className="product-selection-header">
+                        <select
+                            value={formData.paymentAccountId}
+                            onChange={(e) => setFormData({ ...formData, paymentAccountId: e.target.value })}
+                            required
+                            style={{ flex: 1, padding: '10px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: 'inherit', border: '1px solid rgba(255, 255, 255, 0.2)' }}
+                        >
+                            <option value="" disabled style={{ color: '#000' }}>請選擇匯款帳號</option>
+                            {paymentAccountsList.map(acc => {
+                                const last5 = acc.account_number ? String(acc.account_number).slice(-5) : '';
+                                return (
+                                    <option key={acc.id} value={acc.id} style={{ color: '#000' }}>
+                                        {last5}-{acc.label}
+                                    </option>
+                                );
+                            })}
+                        </select>
+                        <button
+                            type="button"
+                            className="refresh-btn"
+                            style={{ marginLeft: '10px' }}
+                            onClick={() => fetchPaymentAccounts(true)}
+                            disabled={loadingAccounts}
+                            title="重新整理清單"
+                        >
+                            {loadingAccounts ? '...' : '刷新'}
+                        </button>
+                    </div>
+                </div>
+
                 <div className="input-group">
                     <label>產品描述 (選填)</label>
                     <textarea
@@ -271,9 +388,9 @@ const Admin = () => {
 
 const UserVerification = () => {
     const [userId, setUserId] = useState('');
-    const [phone, setPhone] = useState('');
-    const [lineDisplayName, setLineDisplayName] = useState('');
+    const [customerId, setCustomerId] = useState('');
     const [lineGroupName, setLineGroupName] = useState('');
+    const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleVerify = async (e) => {
@@ -282,16 +399,16 @@ const UserVerification = () => {
         try {
             const { error } = await supabase.rpc('verify_user', {
                 p_user_id: userId,
-                p_phone: phone,
-                p_line_display_name: lineDisplayName,
-                p_line_group_display_name: lineGroupName
+                p_customer_id: customerId,
+                p_line_group_display_name: lineGroupName,
+                p_phone: phone
             });
             if (error) throw error;
             alert('使用者驗證成功！');
             setUserId('');
-            setPhone('');
-            setLineDisplayName('');
+            setCustomerId('');
             setLineGroupName('');
+            setPhone('');
         } catch (err) {
             alert('驗證失敗: ' + err.message);
         } finally {
@@ -312,20 +429,12 @@ const UserVerification = () => {
                 />
             </div>
             <div className="input-group">
-                <label>電話</label>
+                <label>鼠婦棲地使用者ID</label>
                 <input
                     type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                />
-            </div>
-            <div className="input-group">
-                <label>LINE 顯示名稱</label>
-                <input
-                    type="text"
-                    value={lineDisplayName}
-                    onChange={(e) => setLineDisplayName(e.target.value)}
+                    value={customerId}
+                    onChange={(e) => setCustomerId(e.target.value)}
+                    placeholder="C00001"
                     required
                 />
             </div>
@@ -335,6 +444,15 @@ const UserVerification = () => {
                     type="text"
                     value={lineGroupName}
                     onChange={(e) => setLineGroupName(e.target.value)}
+                    required
+                />
+            </div>
+            <div className="input-group">
+                <label>電話</label>
+                <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     required
                 />
             </div>

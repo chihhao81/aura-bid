@@ -7,9 +7,9 @@ import './Login.css';
 const Login = () => {
     // 保留條款模態框狀態
     const [showTerms, setShowTerms] = useState(false);
-    
+
     // 暗門狀態：是否顯示原本的 Email 登入/註冊介面
-    const [showLegacyLogin, setShowLegacyLogin] = useState(true);
+    const [showLegacyLogin, setShowLegacyLogin] = useState(false);
 
     // --- 原本的 Email/Pwd 狀態與邏輯 ---
     const [email, setEmail] = useState('');
@@ -20,7 +20,7 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [agreed, setAgreed] = useState(false); // 僅用於舊版 Email 註冊有勾選框的版本
     const { login, signup, resetPassword } = useAuth();
-    
+
     // 用於記錄點擊次數與時間
     const clickCountRef = useRef(0);
     const clickTimerRef = useRef(null);
@@ -96,8 +96,11 @@ const Login = () => {
     // --- 密碼觸發機制 (暗門) ---
     // 3 秒內連續點擊 5 次觸發
     const handleSecretTrigger = () => {
+        const isBackdoorEnabled = import.meta.env.VITE_ENABLE_EMAIL_LOGIN_BACKDOOR !== 'false';
+        if (!isBackdoorEnabled) return;
+
         clickCountRef.current += 1;
-        
+
         if (clickCountRef.current === 1) {
             // 第一次點擊時，啟動 3 秒計時器
             clickTimerRef.current = setTimeout(() => {
@@ -228,8 +231,8 @@ const Login = () => {
     return (
         <div className="login-container">
             <div className="login-card glass-card">
-                <h2 
-                    onClick={handleSecretTrigger} 
+                <h2
+                    onClick={handleSecretTrigger}
                     style={{ textAlign: 'center', marginBottom: '10px', userSelect: 'none' }}
                 >
                     歡迎來到鼠婦棲地
@@ -253,8 +256,8 @@ const Login = () => {
                 <p style={{ textAlign: 'center', marginTop: '15px', fontSize: '0.85rem', color: '#888' }}>
                     點擊按鈕即表示您已閱讀並同意
                     <br />
-                    <span 
-                        className="terms-link" 
+                    <span
+                        className="terms-link"
                         onClick={() => setShowTerms(true)}
                         style={{ cursor: 'pointer', textDecoration: 'underline' }}
                     >
