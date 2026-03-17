@@ -10,6 +10,8 @@ export const AuctionProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState([]);
     const { user } = useAuth();
+    const notifiedWonAuctions = React.useRef(new Set());
+    const notifiedOutbids = React.useRef(new Set());
 
     const playNotificationSound = () => {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -18,7 +20,7 @@ export const AuctionProvider = ({ children }) => {
     };
 
     const addNotification = (message, type = 'info', auctionId = null) => {
-        const id = Date.now();
+        const id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
         setNotifications(prev => {
             const updated = [...prev, { id, message, type, auctionId }];
             return updated.slice(-3); // 只保留最後 3 個通知
@@ -122,13 +124,13 @@ export const AuctionProvider = ({ children }) => {
                 { event: 'INSERT', schema: 'public', table: 'bids' },
                 async (payload) => {
                     const newBid = payload.new;
-                    console.log('Bid Realtime Event Received:', newBid);
 
                     // 1. 先處理通知 (副作用移出 setAuctions)
                     const targetAuction = auctionsRef.current.find(a => a.id === newBid.auction_id);
                     if (targetAuction && user && newBid.user_id !== user.id) {
                         const userHasBid = targetAuction.bids.some(b => b.email === user.id);
-                        if (userHasBid) {
+                        if (userHasBid && !notifiedOutbids.current.has(newBid.id)) {
+                            notifiedOutbids.current.add(newBid.id);
                             addNotification(`通知：拍賣「${targetAuction.name}」有了新的出價 $${newBid.bid_amount}，您已被超標！`, 'warning', targetAuction.id);
                         }
                     }
@@ -184,13 +186,15 @@ export const AuctionProvider = ({ children }) => {
                 { event: 'UPDATE', schema: 'public', table: 'auctions' },
                 payload => {
                     const updatedAuction = payload.new;
-                    console.log('Auction Update Event Received:', updatedAuction);
 
                     // 1. 先處理通知
                     const oldAuction = auctionsRef.current.find(a => a.id === updatedAuction.id);
                     if (oldAuction && updatedAuction.status === 'ended' && oldAuction.status !== 'ended') {
                         if (user && oldAuction.bids.length > 0 && oldAuction.bids[0].email === user.id) {
-                            addNotification(`恭喜！您已成功得標拍賣「${oldAuction.name}」！請盡速私訊官方帳號進行後續處理。`, 'success');
+                            if (!notifiedWonAuctions.current.has(updatedAuction.id)) {
+                                notifiedWonAuctions.current.add(updatedAuction.id);
+                                addNotification(`恭喜！您已成功得標拍賣「${oldAuction.name}」！請盡速私訊官方帳號進行後續處理。`, 'success');
+                            }
                         }
                     }
 
@@ -221,7 +225,6 @@ export const AuctionProvider = ({ children }) => {
             .subscribe();
 
         return () => {
-            console.log('Cleaning up realtime channels');
             supabase.removeChannel(bidsChannel);
             supabase.removeChannel(auctionsChannel);
         };
@@ -257,8 +260,8 @@ export const AuctionProvider = ({ children }) => {
             {children}
             <div className="toast-container">
                 {notifications.map(n => (
-                    <div 
-                        key={n.id} 
+                    <div
+                        key={n.id}
                         className={`toast-item ${n.type}`}
                         onClick={() => {
                             if (n.auctionId) {
@@ -272,8 +275,8 @@ export const AuctionProvider = ({ children }) => {
                         }}
                     >
                         <div className="toast-content">{n.message}</div>
-                        <button 
-                            className="toast-close" 
+                        <button
+                            className="toast-close"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 removeNotification(n.id);
