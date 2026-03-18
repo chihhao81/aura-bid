@@ -49,8 +49,8 @@ const TermsModal: React.FC<TermsModalProps> = ({ show, onClose }) => {
                     <section>
                         <h4>5. 交付方式</h4>
                         <ul>
-                            <li>1. 7-11 +$60（自行承擔風險）</li>
-                            <li>2. 黑貓宅配 +$200（12小時內全程開箱錄影包損傷）</li>
+                            <li>1. 7-11 +$60</li>
+                            <li>2. 黑貓宅配 +$130</li>
                             <li>3. 頭份自取，平日13:00-17:00</li>
                         </ul>
                     </section>
