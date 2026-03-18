@@ -168,6 +168,12 @@ const Admin = () => {
             return;
         }
 
+        const parsedQuantity = parseInt(formData.quantity, 10);
+        if (isNaN(parsedQuantity) || parsedQuantity < 1) {
+            alert('請輸入有效的數量 (至少為 1)');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const finalStartTime = formData.startTime ? new Date(formData.startTime) : new Date();
@@ -283,7 +289,7 @@ const Admin = () => {
                         <input
                             type="number"
                             value={formData.quantity}
-                            onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
+                            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                             onWheel={(e) => e.target.blur()}
                             min="1"
                             required

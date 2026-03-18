@@ -19,12 +19,26 @@
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: -1px;
+    display: flex;
+    align-items: center;
 }
 
-.nav-brand h1 span {
+.nav-brand h1 .brand-title {
     background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.test-badge {
+    color: var(--danger);
+    font-size: 0.55em;
+    font-weight: bold;
+    margin-left: 10px;
+    border: 1px solid var(--danger);
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+    -webkit-text-fill-color: initial;
 }
 
 .version {
