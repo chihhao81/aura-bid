@@ -292,6 +292,10 @@ const BidModal = ({ auctionName, minBid, onClose, onSubmit }) => {
             alert('金額不足！');
             return;
         }
+        if (Number(amount) > 99999999) {
+            alert('你出這價我人都可以考慮賣你了');
+            return;
+        }
         onSubmit(amount);
     };
 
@@ -315,6 +319,7 @@ const BidModal = ({ auctionName, minBid, onClose, onSubmit }) => {
                                 onChange={(e) => setAmount(e.target.value)}
                                 onWheel={(e) => e.target.blur()} // 禁用滾輪調節
                                 min={minBid}
+                                max={99999999}
                                 required
                                 autoFocus
                                 style={{ fontSize: '1.2rem', padding: '0.8rem' }}
