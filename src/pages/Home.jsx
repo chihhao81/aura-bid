@@ -324,6 +324,31 @@ const BidModal = ({ auctionName, minBid, onClose, onSubmit }) => {
                                 autoFocus
                                 style={{ fontSize: '1.2rem', padding: '0.8rem' }}
                             />
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+                                {[50, 100, 500, 1000].map(val => (
+                                    <button 
+                                        key={val} 
+                                        type="button" 
+                                        onClick={() => setAmount(prev => Number(prev) + val)} 
+                                        style={{ 
+                                            flex: 1, 
+                                            padding: '0.5rem 0', 
+                                            fontSize: '1rem', 
+                                            fontWeight: 'bold',
+                                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                                            borderRadius: '8px',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                            color: '#fff',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)'; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'; }}
+                                    >
+                                        +{val}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="modal-footer" style={{ gap: '1rem', display: 'flex' }}>
@@ -376,7 +401,7 @@ const HistoryModal = ({ auctionName, bids, onClose }) => {
         if (scrollTimeoutRef.current) return; // Throttle scrolling
 
         const { scrollTop, scrollHeight, clientHeight } = e.target;
-        
+
         scrollTimeoutRef.current = setTimeout(() => {
             if (scrollHeight - scrollTop <= clientHeight + 150) {
                 if (visibleCount < bids.length) {

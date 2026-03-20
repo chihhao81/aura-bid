@@ -399,6 +399,60 @@ const UserVerification = () => {
     const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // 使用者搜尋相關
+    const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [userSearchResults, setUserSearchResults] = useState([]);
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const searchTimeoutRef = React.useRef(null);
+
+    const searchUsers = async (term) => {
+        if (!term || term.length < 1) {
+            setUserSearchResults([]);
+            setShowUserDropdown(false);
+            return;
+        }
+        setSearching(true);
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, line_display_name, picture_url')
+                .ilike('line_display_name', `%${term}%`)
+                .limit(20);
+            if (error) throw error;
+            setUserSearchResults(data || []);
+            setShowUserDropdown(true);
+        } catch (err) {
+            console.error('搜尋使用者失敗:', err);
+        } finally {
+            setSearching(false);
+        }
+    };
+
+    const handleUserSearchChange = (e) => {
+        const val = e.target.value;
+        setUserSearchTerm(val);
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => searchUsers(val), 300);
+    };
+
+    const handleUserSelect = (profile) => {
+        setUserId(profile.id);
+        setUserSearchTerm(profile.line_display_name || '');
+        setShowUserDropdown(false);
+    };
+
+    // 點擊外部關閉下拉
+    React.useEffect(() => {
+        const handler = (e) => {
+            if (!e.target.closest('.user-search-container')) {
+                setShowUserDropdown(false);
+            }
+        };
+        document.addEventListener('click', handler);
+        return () => document.removeEventListener('click', handler);
+    }, []);
+
     const handleVerify = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -415,6 +469,7 @@ const UserVerification = () => {
             setCustomerId('');
             setLineGroupName('');
             setPhone('');
+            setUserSearchTerm('');
         } catch (err) {
             alert('驗證失敗: ' + err.message);
         } finally {
@@ -425,12 +480,53 @@ const UserVerification = () => {
     return (
         <form onSubmit={handleVerify}>
             <div className="input-group">
+                <label>搜尋使用者 (LINE 名稱)</label>
+                <div className="user-search-container" style={{ position: 'relative' }}>
+                    <input
+                        type="text"
+                        value={userSearchTerm}
+                        onChange={handleUserSearchChange}
+                        onFocus={() => { if (userSearchResults.length > 0) setShowUserDropdown(true); }}
+                        placeholder="輸入 LINE 名稱搜尋..."
+                    />
+                    {searching && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '0.85rem' }}>搜尋中...</div>}
+                    {showUserDropdown && userSearchResults.length > 0 && (
+                        <div className="dropdown-list" style={{ maxHeight: '240px' }}>
+                            {userSearchResults.map(profile => (
+                                <div
+                                    key={profile.id}
+                                    className="dropdown-item"
+                                    onClick={() => handleUserSelect(profile)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
+                                >
+                                    <img
+                                        src={profile.picture_url || 'https://via.placeholder.com/36'}
+                                        alt=""
+                                        style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/36'; }}
+                                    />
+                                    <div style={{ overflow: 'hidden' }}>
+                                        <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.line_display_name || '(無名稱)'}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#888', fontFamily: 'monospace' }}>{profile.id.slice(0, 8)}...</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {showUserDropdown && userSearchResults.length === 0 && userSearchTerm.length >= 1 && !searching && (
+                        <div className="dropdown-list">
+                            <div className="dropdown-item no-results">找不到符合的使用者</div>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <div className="input-group">
                 <label>使用者 ID (User ID)</label>
                 <input
                     type="text"
                     value={userId}
                     onChange={(e) => setUserId(e.target.value)}
-                    placeholder="請輸入使用者 UUID"
+                    placeholder="請輸入使用者 UUID 或從上方搜尋選取"
                     required
                 />
             </div>

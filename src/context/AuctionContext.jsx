@@ -116,6 +116,9 @@ export const AuctionProvider = ({ children }) => {
     useEffect(() => {
         fetchAuctions();
 
+        // 用來追蹤是否為斷線重連
+        let hasSubscribedBefore = false;
+
         // 監聽出價更新
         const bidsChannel = supabase
             .channel('bids-realtime')
@@ -176,7 +179,19 @@ export const AuctionProvider = ({ children }) => {
                     }
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                // 當收到 SUBSCRIBED 狀態，代表連線成功或重連成功
+                if (status === 'SUBSCRIBED') {
+                    if (hasSubscribedBefore) {
+                        // 如果之前已經訂閱過，這代表是斷線重連，強制重新拉取最新資料以補齊防漏的事件
+                        console.log('Realtime連線恢復，重新拉取最新拍賣資料...');
+                        fetchAuctions();
+                    } else {
+                        // 初次訂閱成功
+                        hasSubscribedBefore = true;
+                    }
+                }
+            });
 
         // 監聽拍賣狀態更新
         const auctionsChannel = supabase
