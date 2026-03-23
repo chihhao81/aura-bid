@@ -44,7 +44,7 @@ const Admin = () => {
     const [formData, setFormData] = useState({
         productId: '',
         title: '',
-        description: '',
+        description: localStorage.getItem('aura_last_description') || '',
         startPrice: '0',
         minIncrement: '50',
         startTime: getCurrentTime(),
@@ -182,6 +182,7 @@ const Admin = () => {
             if (formData.paymentAccountId) {
                 localStorage.setItem('aura_last_payment_account', formData.paymentAccountId);
             }
+            localStorage.setItem('aura_last_description', formData.description || '');
 
             const { error } = await supabase.rpc('create_auction', {
                 p_description: formData.description || '',
@@ -200,7 +201,7 @@ const Admin = () => {
             setFormData({
                 productId: '',
                 title: '',
-                description: '',
+                description: localStorage.getItem('aura_last_description') || '',
                 startPrice: '0',
                 minIncrement: '50',
                 startTime: getCurrentTime(),
