@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useAuction } from '../context/AuctionContext';
 import { useAuth } from '../context/AuthContext';
 import './Home.css';
@@ -166,6 +166,15 @@ const Home = () => {
 const AuctionCard = memo(({ auction, user, isUpcoming, isEnded, handleBid, cooldown, setHistoryModal, setDescModal }) => {
     const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.startPrice;
     const [isTension, setIsTension] = useState(false);
+    const descRef = useRef(null);
+    const [isOverflow, setIsOverflow] = useState(false);
+
+    useEffect(() => {
+        const el = descRef.current;
+        if (el) {
+            setIsOverflow(el.scrollHeight > el.clientHeight);
+        }
+    }, [auction.description]);
 
     return (
         <div id={`auction-${auction.id}`} className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''} ${isTension ? 'tension-pulse' : ''}`}>
@@ -177,10 +186,13 @@ const AuctionCard = memo(({ auction, user, isUpcoming, isEnded, handleBid, coold
                 <h3>{auction.name}</h3>
                 {auction.description && (
                     <div
-                        className="product-description"
-                        onClick={() => setDescModal({ show: true, content: auction.description, title: auction.name })}
+                        className={`product-description ${isOverflow ? 'clickable' : ''}`}
+                        onClick={() => isOverflow && setDescModal({ show: true, content: auction.description, title: auction.name })}
                     >
-                        {auction.description}
+                        <div className="desc-text" ref={descRef}>
+                            {auction.description}
+                        </div>
+                        {isOverflow && <span className="desc-show-more">顯示全部</span>}
                     </div>
                 )}
                 <div className="price-info">
