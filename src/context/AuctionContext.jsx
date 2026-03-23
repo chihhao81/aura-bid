@@ -12,6 +12,7 @@ export const AuctionProvider = ({ children }) => {
     const { user } = useAuth();
     const notifiedWonAuctions = React.useRef(new Set());
     const notifiedOutbids = React.useRef(new Set());
+    const profilesCache = React.useRef(new Map());
 
     const playNotificationSound = () => {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -38,69 +39,84 @@ export const AuctionProvider = ({ children }) => {
         return dateStr.replace(' ', 'T') + 'Z';
     };
 
+    const sortAuctions = (auctionsList) => {
+        return [...auctionsList].sort((a, b) => {
+            const statusOrder = { 'active': 1, 'upcoming': 2, 'ended': 3 };
+            if (statusOrder[a.status] !== statusOrder[b.status]) {
+                return statusOrder[a.status] - statusOrder[b.status];
+            }
+            const endDiff = new Date(a.endTime) - new Date(b.endTime);
+            if (endDiff !== 0) return endDiff;
+            return new Date(a.createdAt) - new Date(b.createdAt);
+        });
+    };
+
+    const formatAuctionsData = (auctionsData, bids, profiles) => {
+        const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/product_images`;
+
+        return auctionsData.map(a => ({
+            id: a.id,
+            name: a.title,
+            description: a.description,
+            image: `${STORAGE_URL}/${a.product_id}.jpg`,
+            startPrice: a.start_price,
+            minIncrement: a.min_increment,
+            startTime: ensureUTC(a.start_time),
+            endTime: ensureUTC(a.end_time),
+            createdAt: ensureUTC(a.created_at),
+            status: a.status,
+            product_id: a.product_id,
+            bids: bids.filter(b => b.auction_id === a.id).map(b => {
+                const profile = profiles?.find(p => p.id === b.user_id);
+                return {
+                    id: b.id,
+                    email: b.user_id,
+                    line_group_name: profile?.line_group_display_name || '未加入群組',
+                    amount: b.bid_amount,
+                    time: ensureUTC(b.created_at)
+                };
+            })
+        }));
+    };
+
+    const fetchRawData = async () => {
+        const { data: auctionsData, error: auctionError } = await supabase
+            .from('auctions')
+            .select('*')
+            .neq('status', 'closed');
+
+        if (auctionError) throw auctionError;
+
+        const { data: bids, error: bidError } = await supabase
+            .from('bids')
+            .select('id, user_id, bid_amount, created_at, auction_id')
+            .in('auction_id', auctionsData.map(a => a.id))
+            .order('created_at', { ascending: false });
+
+        if (bidError) throw bidError;
+
+        const userIds = [...new Set(bids.map(b => b.user_id))];
+        const uncachedIds = userIds.filter(id => !profilesCache.current.has(id));
+
+        if (uncachedIds.length > 0) {
+            const { data: newProfiles } = await supabase
+                .from('profiles')
+                .select('id, line_group_display_name')
+                .in('id', uncachedIds);
+
+            newProfiles?.forEach(p => profilesCache.current.set(p.id, p));
+        }
+
+        const profiles = userIds.map(id => profilesCache.current.get(id)).filter(Boolean);
+
+        return formatAuctionsData(auctionsData, bids, profiles);
+    };
+
     const fetchAuctions = async () => {
         setLoading(true);
         try {
-            const { data: auctionsData, error: auctionError } = await supabase
-                .from('auctions')
-                .select('*')
-                .neq('status', 'closed');
-
-            if (auctionError) throw auctionError;
-
-            // Fetch bids
-            const { data: bids, error: bidError } = await supabase
-                .from('bids')
-                .select('id, user_id, bid_amount, created_at, auction_id')
-                .in('auction_id', auctionsData.map(a => a.id))
-                .order('created_at', { ascending: false });
-
-            if (bidError) throw bidError;
-
-            // Fetch profiles for all bidders
-            const userIds = [...new Set(bids.map(b => b.user_id))];
-            const { data: profiles } = await supabase
-                .from('profiles')
-                .select('id, line_group_display_name')
-                .in('id', userIds);
-
-            const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/product_images`;
-
-            const formattedAuctions = auctionsData.map(a => {
-                return {
-                    id: a.id,
-                    name: a.title,
-                    description: a.description,
-                    image: `${STORAGE_URL}/${a.product_id}.jpg`,
-                    startPrice: a.start_price,
-                    minIncrement: a.min_increment,
-                    startTime: ensureUTC(a.start_time),
-                    endTime: ensureUTC(a.end_time),
-                    status: a.status,
-                    product_id: a.product_id,
-                    bids: bids.filter(b => b.auction_id === a.id).map(b => {
-                        const profile = profiles?.find(p => p.id === b.user_id);
-                        return {
-                            id: b.id,
-                            email: b.user_id,
-                            line_group_name: profile?.line_group_display_name || '未加入群組',
-                            amount: b.bid_amount,
-                            time: ensureUTC(b.created_at)
-                        };
-                    })
-                };
-            });
-
-            // Sorting logic: active > upcoming > ended, then by endTime ascending
-            const sorted = formattedAuctions.sort((a, b) => {
-                const statusOrder = { 'active': 1, 'upcoming': 2, 'ended': 3 };
-                if (statusOrder[a.status] !== statusOrder[b.status]) {
-                    return statusOrder[a.status] - statusOrder[b.status];
-                }
-                return new Date(a.endTime) - new Date(b.endTime);
-            });
-
-            setAuctions(sorted);
+            const formatted = await fetchRawData();
+            setAuctions(sortAuctions(formatted));
         } catch (error) {
             console.error('Error fetching auctions:', error);
         } finally {
@@ -114,135 +130,57 @@ export const AuctionProvider = ({ children }) => {
     }, [auctions]);
 
     useEffect(() => {
+        if (!user) {
+            setAuctions([]);
+            setLoading(false);
+            return;
+        }
+
         fetchAuctions();
 
-        // 用來追蹤是否為斷線重連
-        let hasSubscribedBefore = false;
+        const intervalId = setInterval(async () => {
+            try {
+                const freshAuctions = await fetchRawData();
+                const oldAuctions = auctionsRef.current;
 
-        // 監聽出價更新
-        const bidsChannel = supabase
-            .channel('bids-realtime')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'bids' },
-                async (payload) => {
-                    const newBid = payload.new;
+                // 被超標通知：找出新的出價，且出價者不是自己、自己有出過價
+                if (user) {
+                    for (const freshA of freshAuctions) {
+                        const oldA = oldAuctions.find(a => a.id === freshA.id);
+                        if (!oldA) continue;
 
-                    // 1. 先處理通知 (副作用移出 setAuctions)
-                    const targetAuction = auctionsRef.current.find(a => a.id === newBid.auction_id);
-                    if (targetAuction && user && newBid.user_id !== user.id) {
-                        const userHasBid = targetAuction.bids.some(b => b.email === user.id);
-                        if (userHasBid && !notifiedOutbids.current.has(newBid.id)) {
-                            notifiedOutbids.current.add(newBid.id);
-                            addNotification(`通知：拍賣「${targetAuction.name}」有了新的出價 $${newBid.bid_amount}，您已被超標！`, 'warning', targetAuction.id);
+                        const oldBidIds = new Set(oldA.bids.map(b => b.id));
+                        const newBids = freshA.bids.filter(b => !oldBidIds.has(b.id));
+
+                        for (const newBid of newBids) {
+                            if (newBid.email !== user.id) {
+                                const userHasBid = oldA.bids.some(b => b.email === user.id);
+                                if (userHasBid && !notifiedOutbids.current.has(newBid.id)) {
+                                    notifiedOutbids.current.add(newBid.id);
+                                    addNotification(`通知：拍賣「${freshA.name}」有了新的出價 $${newBid.amount}，您已被超標！`, 'warning', freshA.id);
+                                }
+                            }
                         }
-                    }
 
-                    // 2. 更新狀態 (純函數)
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('line_group_display_name')
-                        .eq('id', newBid.user_id)
-                        .single();
-
-                    setAuctions(prev => prev.map(a => {
-                        if (a.id === newBid.auction_id) {
-                            if (a.bids.some(b => b.id === newBid.id)) return a;
-
-                            return {
-                                ...a,
-                                bids: [{
-                                    id: newBid.id,
-                                    email: newBid.user_id,
-                                    line_group_name: profile?.line_group_display_name || '未加入群組',
-                                    amount: newBid.bid_amount,
-                                    time: ensureUTC(newBid.created_at)
-                                }, ...a.bids]
-                            };
-                        }
-                        return a;
-                    }));
-
-                    // 3. 安全起見，主動再次拉取該拍賣的資料以更新 endTime (防止 UPDATE 事件延遲)
-                    const { data: latestAuction } = await supabase
-                        .from('auctions')
-                        .select('end_time, status')
-                        .eq('id', newBid.auction_id)
-                        .single();
-
-                    if (latestAuction) {
-                        setAuctions(prev => prev.map(a =>
-                            a.id === newBid.auction_id
-                                ? { ...a, endTime: ensureUTC(latestAuction.end_time), status: latestAuction.status }
-                                : a
-                        ));
-                    }
-                }
-            )
-            .subscribe((status) => {
-                // 當收到 SUBSCRIBED 狀態，代表連線成功或重連成功
-                if (status === 'SUBSCRIBED') {
-                    if (hasSubscribedBefore) {
-                        // 如果之前已經訂閱過，這代表是斷線重連，強制重新拉取最新資料以補齊防漏的事件
-                        console.log('Realtime連線恢復，重新拉取最新拍賣資料...');
-                        fetchAuctions();
-                    } else {
-                        // 初次訂閱成功
-                        hasSubscribedBefore = true;
-                    }
-                }
-            });
-
-        // 監聽拍賣狀態更新
-        const auctionsChannel = supabase
-            .channel('auctions-status')
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'auctions' },
-                payload => {
-                    const updatedAuction = payload.new;
-
-                    // 1. 先處理通知
-                    const oldAuction = auctionsRef.current.find(a => a.id === updatedAuction.id);
-                    if (oldAuction && updatedAuction.status === 'ended' && oldAuction.status !== 'ended') {
-                        if (user && oldAuction.bids.length > 0 && oldAuction.bids[0].email === user.id) {
-                            if (!notifiedWonAuctions.current.has(updatedAuction.id)) {
-                                notifiedWonAuctions.current.add(updatedAuction.id);
-                                addNotification(`恭喜！您已成功得標拍賣「${oldAuction.name}」！請盡速私訊官方帳號進行後續處理。`, 'success');
+                        // 得標通知：拍賣從非 ended 變成 ended，且最高出價者是自己
+                        if (freshA.status === 'ended' && oldA.status !== 'ended') {
+                            if (freshA.bids.length > 0 && freshA.bids[0].email === user.id) {
+                                if (!notifiedWonAuctions.current.has(freshA.id)) {
+                                    notifiedWonAuctions.current.add(freshA.id);
+                                    addNotification(`恭喜！您已成功得標拍賣「${freshA.name}」！請盡速私訊官方帳號進行後續處理。`, 'success');
+                                }
                             }
                         }
                     }
-
-                    // 2. 更新狀態
-                    setAuctions(prev => {
-                        const newAuctions = prev.map(a => {
-                            if (a.id === updatedAuction.id) {
-                                return {
-                                    ...a,
-                                    status: updatedAuction.status,
-                                    startTime: ensureUTC(updatedAuction.start_time),
-                                    endTime: ensureUTC(updatedAuction.end_time)
-                                };
-                            }
-                            return a;
-                        });
-
-                        return [...newAuctions].sort((a, b) => {
-                            const statusOrder = { 'active': 1, 'upcoming': 2, 'ended': 3 };
-                            if (statusOrder[a.status] !== statusOrder[b.status]) {
-                                return statusOrder[a.status] - statusOrder[b.status];
-                            }
-                            return new Date(a.endTime) - new Date(b.endTime);
-                        });
-                    });
                 }
-            )
-            .subscribe();
 
-        return () => {
-            supabase.removeChannel(bidsChannel);
-            supabase.removeChannel(auctionsChannel);
-        };
+                setAuctions(sortAuctions(freshAuctions));
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        }, 5000);
+
+        return () => clearInterval(intervalId);
     }, [user?.id]);
 
     const addProduct = async (product) => {
@@ -257,9 +195,14 @@ export const AuctionProvider = ({ children }) => {
 
         if (error) {
             console.error('Error in place_bid RPC:', error);
+            // 發生出價錯誤（如：價格已被更新），立刻重新拉取最新資料
+            await fetchAuctions();
             // Throw the actual message from Postgres (e.g. "You are already the highest bidder")
             throw new Error(error.message || '出價失敗');
         }
+        
+        // 出價成功也主動更新一下，讓 UI 立即反應
+        await fetchAuctions();
     };
 
     return (

@@ -60,6 +60,10 @@
     position: relative;
 }
 
+.product-selection-header select {
+    flex: 1;
+}
+
 .autocomplete-container {
     position: relative;
     flex: 1;

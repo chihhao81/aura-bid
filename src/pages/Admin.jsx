@@ -305,13 +305,12 @@ const Admin = () => {
                             value={formData.paymentAccountId}
                             onChange={(e) => setFormData({ ...formData, paymentAccountId: e.target.value })}
                             required
-                            style={{ flex: 1, padding: '10px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: 'inherit', border: '1px solid rgba(255, 255, 255, 0.2)' }}
                         >
-                            <option value="" disabled style={{ color: '#000' }}>請選擇匯款帳號</option>
+                            <option value="" disabled>請選擇匯款帳號</option>
                             {paymentAccountsList.map(acc => {
                                 const last5 = acc.account_number ? String(acc.account_number).slice(-5) : '';
                                 return (
-                                    <option key={acc.id} value={acc.id} style={{ color: '#000' }}>
+                                    <option key={acc.id} value={acc.id}>
                                         {last5}-{acc.label}
                                     </option>
                                 );
@@ -320,7 +319,6 @@ const Admin = () => {
                         <button
                             type="button"
                             className="refresh-btn"
-                            style={{ marginLeft: '10px' }}
                             onClick={() => fetchPaymentAccounts(true)}
                             disabled={loadingAccounts}
                             title="重新整理清單"
