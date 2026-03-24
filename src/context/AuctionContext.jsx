@@ -52,7 +52,7 @@ export const AuctionProvider = ({ children }) => {
             product_id: a.product_id,
             highest_bid: a.highest_bid,
             bid_count: a.bid_count,
-            top_bidder_id: a.top_bidder_id, // 補上此欄位用於通知判斷
+            top_bidder_id: a.top_bidder_id,
             bids: (a.top_bids || []).map(b => ({
                 id: Math.random().toString(36).substring(7),
                 email: b.user_id || 'guest',
