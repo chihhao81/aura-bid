@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { useAuth } from './AuthContext';
 import { SUPABASE_URL } from '../utils/envConfig';
+import { ensureUTC, sortAuctions } from '../utils/auctionUtils';
 
 const AuctionContext = createContext();
 
@@ -33,23 +34,6 @@ export const AuctionProvider = ({ children }) => {
         setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
-    const ensureUTC = (dateStr) => {
-        if (!dateStr) return null;
-        if (dateStr.includes('Z')) return dateStr;
-        return dateStr.replace(' ', 'T') + 'Z';
-    };
-
-    const sortAuctions = (auctionsList) => {
-        return [...auctionsList].sort((a, b) => {
-            const statusOrder = { 'active': 1, 'upcoming': 2, 'ended': 3 };
-            if (statusOrder[a.status] !== statusOrder[b.status]) {
-                return statusOrder[a.status] - statusOrder[b.status];
-            }
-            const endDiff = new Date(a.endTime) - new Date(b.endTime);
-            if (endDiff !== 0) return endDiff;
-            return new Date(a.createdAt) - new Date(b.createdAt);
-        });
-    };
 
     const formatAuctionsData = (auctionsData, bids, profiles) => {
         const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/product_images`;
