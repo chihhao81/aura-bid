@@ -35,7 +35,7 @@ export const AuctionProvider = ({ children }) => {
     };
 
 
-    const formatAuctionsData = (auctionsData, bids, profiles) => {
+    const formatAuctionsData = (auctionsData) => {
         const STORAGE_URL = `${SUPABASE_URL}/storage/v1/object/public/product_images`;
 
         return auctionsData.map(a => ({
@@ -50,50 +50,45 @@ export const AuctionProvider = ({ children }) => {
             createdAt: ensureUTC(a.created_at),
             status: a.status,
             product_id: a.product_id,
-            bids: bids.filter(b => b.auction_id === a.id).map(b => {
-                const profile = profiles?.find(p => p.id === b.user_id);
-                return {
-                    id: b.id,
-                    email: b.user_id,
-                    line_group_name: profile?.line_group_display_name || '未加入群組',
-                    amount: b.bid_amount,
-                    time: ensureUTC(b.created_at)
-                };
-            })
+            highest_bid: a.highest_bid,
+            bid_count: a.bid_count,
+            top_bidder_id: a.top_bidder_id, // 補上此欄位用於通知判斷
+            bids: (a.top_bids || []).map(b => ({
+                id: Math.random().toString(36).substring(7),
+                email: b.user_id || 'guest',
+                line_group_name: b.bidder_name || 'unknown',
+                amount: b.bid_amount,
+                time: ensureUTC(b.created_at)
+            }))
         }));
     };
 
     const fetchRawData = async () => {
         const { data: auctionsData, error: auctionError } = await supabase
-            .from('auctions')
-            .select('*')
-            .neq('status', 'closed');
+            .from('auctions_with_top_bids')
+            .select('id, title, description, product_id, start_price, min_increment, start_time, end_time, created_at, status, highest_bid, bid_count, top_bids, top_bidder_id');
 
         if (auctionError) throw auctionError;
 
-        const { data: bids, error: bidError } = await supabase
-            .from('bids')
-            .select('id, user_id, bid_amount, created_at, auction_id')
-            .in('auction_id', auctionsData.map(a => a.id))
-            .order('created_at', { ascending: false });
+        return formatAuctionsData(auctionsData);
+    };
 
-        if (bidError) throw bidError;
+    const fetchAuctionBidsDetail = async (auctionId) => {
+        const { data, error } = await supabase
+            .from('auction_bids_detail')
+            .select('*')
+            .eq('auction_id', auctionId)
+            .order('bid_amount', { ascending: false });
 
-        const userIds = [...new Set(bids.map(b => b.user_id))];
-        const uncachedIds = userIds.filter(id => !profilesCache.current.has(id));
+        if (error) throw error;
 
-        if (uncachedIds.length > 0) {
-            const { data: newProfiles } = await supabase
-                .from('profiles')
-                .select('id, line_group_display_name')
-                .in('id', uncachedIds);
-
-            newProfiles?.forEach(p => profilesCache.current.set(p.id, p));
-        }
-
-        const profiles = userIds.map(id => profilesCache.current.get(id)).filter(Boolean);
-
-        return formatAuctionsData(auctionsData, bids, profiles);
+        return data.map(b => ({
+            id: b.bid_id, // 這裡是 bid_id
+            email: b.user_id,
+            line_group_name: b.bidder_name || 'unknown',
+            amount: b.bid_amount,
+            time: ensureUTC(b.created_at)
+        }));
     };
 
     const fetchAuctions = async () => {
@@ -113,42 +108,42 @@ export const AuctionProvider = ({ children }) => {
         auctionsRef.current = auctions;
     }, [auctions]);
 
+    const lastFetchedAuctionsUserRef = React.useRef(null);
     useEffect(() => {
         if (!user) {
             setAuctions([]);
             setLoading(false);
+            lastFetchedAuctionsUserRef.current = null;
             return;
         }
 
-        fetchAuctions();
+        // 只有當 User ID 改變時，才進行初始的全量抓取
+        if (lastFetchedAuctionsUserRef.current !== user.id) {
+            lastFetchedAuctionsUserRef.current = user.id;
+            fetchAuctions();
+        }
 
+        // 無論如何（包括 StrictMode 的 Remount）都要啟動輪詢，因為舊的已被 Cleanup 清除
         const intervalId = setInterval(async () => {
             try {
                 const freshAuctions = await fetchRawData();
                 const oldAuctions = auctionsRef.current;
 
-                // 被超標通知：找出新的出價，且出價者不是自己、自己有出過價
                 if (user) {
                     for (const freshA of freshAuctions) {
                         const oldA = oldAuctions.find(a => a.id === freshA.id);
                         if (!oldA) continue;
 
-                        const oldBidIds = new Set(oldA.bids.map(b => b.id));
-                        const newBids = freshA.bids.filter(b => !oldBidIds.has(b.id));
+                        const bidCountChanged = freshA.bid_count !== oldA.bid_count;
+                        const wasTopBidder = oldA.top_bidder_id === user.id;
+                        const isStillTopBidder = freshA.top_bidder_id === user.id;
 
-                        for (const newBid of newBids) {
-                            if (newBid.email !== user.id) {
-                                const userHasBid = oldA.bids.some(b => b.email === user.id);
-                                if (userHasBid && !notifiedOutbids.current.has(newBid.id)) {
-                                    notifiedOutbids.current.add(newBid.id);
-                                    addNotification(`通知：拍賣「${freshA.name}」有了新的出價 $${newBid.amount}，您已被超標！`, 'warning', freshA.id);
-                                }
-                            }
+                        if (bidCountChanged && wasTopBidder && !isStillTopBidder) {
+                            addNotification(`通知：拍賣「${freshA.name}」有了新的出價 $${freshA.highest_bid}，您已被超標！`, 'warning', freshA.id);
                         }
 
-                        // 得標通知：拍賣從非 ended 變成 ended，且最高出價者是自己
                         if (freshA.status === 'ended' && oldA.status !== 'ended') {
-                            if (freshA.bids.length > 0 && freshA.bids[0].email === user.id) {
+                            if (freshA.top_bidder_id === user.id) {
                                 if (!notifiedWonAuctions.current.has(freshA.id)) {
                                     notifiedWonAuctions.current.add(freshA.id);
                                     addNotification(`恭喜！您已成功得標拍賣「${freshA.name}」！請盡速私訊官方帳號進行後續處理。`, 'success');
@@ -184,7 +179,7 @@ export const AuctionProvider = ({ children }) => {
             // Throw the actual message from Postgres (e.g. "You are already the highest bidder")
             throw new Error(error.message || '出價失敗');
         }
-        
+
         // 出價成功也主動更新一下，讓 UI 立即反應
         await fetchAuctions();
     };
@@ -194,6 +189,7 @@ export const AuctionProvider = ({ children }) => {
             auctions,
             loading,
             fetchAuctions,
+            fetchAuctionBidsDetail,
             addProduct,
             placeBid,
             notifications,

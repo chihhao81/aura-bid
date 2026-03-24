@@ -6,44 +6,59 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const lastFetchedId = React.useRef(null);
 
     useEffect(() => {
         const getProfile = async (session) => {
             if (!session) {
                 setUser(null);
                 setLoading(false);
+                lastFetchedId.current = null;
                 return;
             }
 
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-            if (error) {
-                console.error('Error fetching profile:', error);
-                // Fallback to basic session user if profile fetch fails
-                setUser({ ...session.user, isAdmin: false });
-            } else if (data.is_banned) {
-                alert('您的帳號已被停權，請聯繫Line官方帳號。');
-                await supabase.auth.signOut();
-                setUser(null);
-            } else {
-                setUser({
-                    ...session.user,
-                    role: data.role,
-                    is_verified: data.is_verified,
-                    is_banned: data.is_banned,
-                    line_name: data.line_display_name,
-                    line_group_name: data.line_group_display_name,
-                    isAdmin: data.role === 'admin'
-                });
+            // 如果已經在抓取或抓過同一個人的了，確保 loading 結束後直接返回
+            if (lastFetchedId.current === session.user.id) {
+                // 如果已經有 user 了，代表已經完成
+                if (user) setLoading(false);
+                return;
             }
-            setLoading(false);
+            lastFetchedId.current = session.user.id;
+
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (error) {
+                    console.error('Error fetching profile:', error);
+                    setUser({ ...session.user, isAdmin: false });
+                } else if (data.is_banned) {
+                    alert('您的帳號已被停權，請聯繫Line官方帳號。');
+                    await supabase.auth.signOut();
+                    setUser(null);
+                } else {
+                    setUser({
+                        ...session.user,
+                        role: data.role,
+                        is_verified: data.is_verified,
+                        is_banned: data.is_banned,
+                        line_name: data.line_display_name,
+                        line_group_name: data.line_group_display_name,
+                        isAdmin: data.role === 'admin'
+                    });
+                }
+            } catch (err) {
+                console.error('Auth error:', err);
+                setUser({ ...session.user, isAdmin: false });
+            } finally {
+                setLoading(false);
+            }
         };
 
-        // Get initial session
+        // 確保初始載入能抓到 session
         supabase.auth.getSession().then(({ data: { session } }) => {
             getProfile(session);
         });
