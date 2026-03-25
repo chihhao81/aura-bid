@@ -10,8 +10,6 @@ export const sortAuctions = (auctionsList) => {
         if (statusOrder[a.status] !== statusOrder[b.status]) {
             return statusOrder[a.status] - statusOrder[b.status];
         }
-        const endDiff = new Date(a.endTime) - new Date(b.endTime);
-        if (endDiff !== 0) return endDiff;
         return new Date(a.createdAt) - new Date(b.createdAt);
     });
 };

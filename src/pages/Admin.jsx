@@ -6,7 +6,14 @@ import './Admin.css';
 export const PRODUCT_SIZES = [
     { id: '0', value: '0.3cm以上' },
     { id: '1', value: '0.5cm以上' },
-    { id: '2', value: '亞成成體' }
+    { id: '2', value: '亞成成體' },
+    { id: '3', value: '幼體' },
+    { id: '4', value: '小亞成' },
+    { id: '5', value: '0.5-1公分' },
+    { id: '6', value: '1-1.5公分' },
+    { id: '7', value: '1.5-2公分' },
+    { id: '8', value: '2-2.5公分' },
+    { id: '9', value: '3公分以上' },
 ];
 
 const Admin = () => {

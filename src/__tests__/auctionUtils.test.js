@@ -31,9 +31,9 @@ describe('auctionUtils', () => {
             expect(sorted[2].status).toBe('ended');
         });
 
-        it('should sort by endTime if status is the same', () => {
+        it('should sort by createdAt if status is the same', () => {
             const auctions = [
-                { id: 1, status: 'active', endTime: '2024-03-24T15:00:00Z', createdAt: '2024-03-24T10:00:00Z' },
+                { id: 1, status: 'active', endTime: '2024-03-24T12:00:00Z', createdAt: '2024-03-24T11:00:00Z' },
                 { id: 2, status: 'active', endTime: '2024-03-24T12:00:00Z', createdAt: '2024-03-24T10:00:00Z' }
             ];
             const sorted = sortAuctions(auctions);

@@ -233,10 +233,13 @@ const Login = () => {
             <div className="login-card glass-card">
                 <h2
                     onClick={handleSecretTrigger}
-                    style={{ textAlign: 'center', marginBottom: '10px', userSelect: 'none' }}
+                    style={{ textAlign: 'center', marginBottom: '8px', userSelect: 'none' }}
                 >
                     歡迎來到鼠婦棲地
                 </h2>
+                <p style={{ textAlign: 'center', marginBottom: '16px', fontSize: '1.5rem', color: '#ddd', fontWeight: '600' }}>
+                    特寵競標平台
+                </p>
                 <p style={{ textAlign: 'center', marginBottom: '30px', color: '#666' }}>
                     請使用 LINE 進行登入或註冊
                 </p>

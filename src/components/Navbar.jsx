@@ -12,7 +12,7 @@ const Navbar = () => {
         <nav className="navbar glass-card">
             <div className="nav-brand">
                 <h1>
-                    <span className="brand-title">鼠婦棲地</span>
+                    <span className="brand-title">特寵競標平台</span>
                     {isTestEnv && <span className="test-badge">測試台</span>}
                 </h1>
                 <span className="version">v{version}</span>
