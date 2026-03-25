@@ -537,13 +537,12 @@ const UserVerification = () => {
                 />
             </div>
             <div className="input-group">
-                <label>鼠婦棲地使用者ID</label>
+                <label>鼠婦棲地使用者ID (選填)</label>
                 <input
                     type="text"
                     value={customerId}
                     onChange={(e) => setCustomerId(e.target.value)}
                     placeholder="C00001"
-                    required
                 />
             </div>
             <div className="input-group">
