@@ -42,7 +42,7 @@ export const AuctionProvider = ({ children }) => {
             id: a.id,
             name: a.title,
             description: a.description,
-            image: `${STORAGE_URL}/${a.product_id}.jpg`,
+            image: `${STORAGE_URL}/${a.product_id}.jpg?t=${new Date(a.created_at).getTime()}`,
             startPrice: a.start_price,
             minIncrement: a.min_increment,
             startTime: ensureUTC(a.start_time),

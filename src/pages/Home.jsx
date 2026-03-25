@@ -11,6 +11,7 @@ const Home = () => {
     const [descModal, setDescModal] = useState({ show: false, content: '', title: '' });
     const [bidModal, setBidModal] = useState({ show: false, auctionId: null, auctionName: '', minBid: 0 });
     const [verifyModal, setVerifyModal] = useState({ show: false });
+    const [imgModal, setImgModal] = useState({ show: false, src: '' });
 
     const handleShowHistory = useCallback(async (auctionId, auctionName) => {
         setHistoryModal(prev => ({ ...prev, show: true, auctionName, bids: [], loading: true }));
@@ -104,6 +105,7 @@ const Home = () => {
                                 cooldown={cooldown}
                                 onShowHistory={handleShowHistory}
                                 setDescModal={setDescModal}
+                                onImageClick={(src) => setImgModal({ show: true, src })}
                             />
                         );
                     })}
@@ -147,37 +149,46 @@ const Home = () => {
                 />
             )}
 
-                    {verifyModal.show && (
-                        <div className="modal-overlay" onClick={() => setVerifyModal({ show: false })}>
-                            <div className="modal-content glass-card desc-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px', textAlign: 'center' }}>
-                                <div className="modal-header">
-                                    <h3 style={{ color: '#ff4d4f' }}>驗證提示</h3>
-                                    <button className="close-btn" onClick={() => setVerifyModal({ show: false })}>&times;</button>
-                                </div>
-                                <div className="modal-body">
-                                    <h4 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#fff' }}>您尚未通過人工驗證，請聯繫Line官方帳號。</h4>
-                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px', margin: '1rem 0' }}>
-                                        <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
-                                            <a href="https://lin.ee/29HRA8aF" target="_blank" rel="noreferrer" style={{ color: '#00B900', textDecoration: 'none', fontWeight: 'bold' }}>
-                                                👉 加入連結 | https://lin.ee/29HRA8aF
-                                            </a>
-                                        </p>
-                                        <p style={{ marginBottom: '0.5rem', color: '#ccc' }}>或掃QR code</p>
-                                        <img src="https://qr-official.line.me/gs/M_056qctjm_GW.png" alt="Line QR Code" style={{ width: '150px', height: '150px', borderRadius: '8px', marginBottom: '1rem', background: '#fff', padding: '5px' }} />
-                                    </div>
-                                    <p style={{ color: '#888', fontSize: '0.9rem' }}>如果連接失效，請直接搜尋Line ID <strong style={{ color: '#fff' }}>@056qctjm</strong></p>
-                                </div>
-                                <div className="modal-footer" style={{ justifyContent: 'center' }}>
-                                    <button className="btn-primary" onClick={() => setVerifyModal({ show: false })}>我知道了</button>
-                                </div>
-                            </div>
+            {verifyModal.show && (
+                <div className="modal-overlay" onClick={() => setVerifyModal({ show: false })}>
+                    <div className="modal-content glass-card desc-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px', textAlign: 'center' }}>
+                        <div className="modal-header">
+                            <h3 style={{ color: '#ff4d4f' }}>驗證提示</h3>
+                            <button className="close-btn" onClick={() => setVerifyModal({ show: false })}>&times;</button>
                         </div>
-                    )}
+                        <div className="modal-body">
+                            <h4 style={{ marginBottom: '1rem', fontSize: '1.2rem', color: '#fff' }}>您尚未通過人工驗證，請聯繫Line官方帳號。</h4>
+                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px', margin: '1rem 0' }}>
+                                <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
+                                    <a href="https://lin.ee/29HRA8aF" target="_blank" rel="noreferrer" style={{ color: '#00B900', textDecoration: 'none', fontWeight: 'bold' }}>
+                                        👉 加入連結 | https://lin.ee/29HRA8aF
+                                    </a>
+                                </p>
+                                <p style={{ marginBottom: '0.5rem', color: '#ccc' }}>或掃QR code</p>
+                                <img src="https://qr-official.line.me/gs/M_056qctjm_GW.png" alt="Line QR Code" style={{ width: '150px', height: '150px', borderRadius: '8px', marginBottom: '1rem', background: '#fff', padding: '5px' }} />
+                            </div>
+                            <p style={{ color: '#888', fontSize: '0.9rem' }}>如果連接失效，請直接搜尋Line ID <strong style={{ color: '#fff' }}>@056qctjm</strong></p>
+                        </div>
+                        <div className="modal-footer" style={{ justifyContent: 'center' }}>
+                            <button className="btn-primary" onClick={() => setVerifyModal({ show: false })}>我知道了</button>
+                        </div>
+                    </div>
                 </div>
+            )}
+
+            {imgModal.show && (
+                <div className="modal-overlay image-modal-overlay" onClick={() => setImgModal({ show: false, src: '' })}>
+                    <div className="image-modal-content" onClick={e => e.stopPropagation()}>
+                        <img src={imgModal.src} alt="Full size" className="full-image-preview" />
+                        <button className="close-btn circle" onClick={() => setImgModal({ show: false, src: '' })}>&times;</button>
+                    </div>
+                </div>
+            )}
+        </div>
             );
         };
         
-        const AuctionCard = memo(({ auction, user, isUpcoming, isEnded, handleBid, cooldown, onShowHistory, setDescModal }) => {
+        const AuctionCard = memo(({ auction, user, isUpcoming, isEnded, handleBid, cooldown, onShowHistory, setDescModal, onImageClick }) => {
     const currentPrice = auction.bids.length > 0 ? auction.bids[0].amount : auction.startPrice;
     const [isTension, setIsTension] = useState(false);
     const descRef = useRef(null);
@@ -192,7 +203,11 @@ const Home = () => {
 
     return (
         <div id={`auction-${auction.id}`} className={`product-card glass-card ${isUpcoming ? 'is-upcoming' : ''} ${isEnded ? 'is-ended' : ''} ${isTension ? 'tension-pulse' : ''}`}>
-            <div className="product-image" style={{ backgroundImage: `url(${auction.image})` }}>
+            <div 
+                className="product-image" 
+                style={{ backgroundImage: `url(${auction.image})`, cursor: 'pointer' }}
+                onClick={() => onImageClick(auction.image)}
+            >
                 {isUpcoming && <div className="status-overlay upcoming">即將開始</div>}
                 {isEnded && <div className="status-overlay ended">已結束</div>}
             </div>
