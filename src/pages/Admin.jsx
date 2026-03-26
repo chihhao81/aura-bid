@@ -26,19 +26,30 @@ const Admin = () => {
 
     const getCurrentTime = () => {
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const nextStart = new Date(now);
+        nextStart.setMilliseconds(0);
+        nextStart.setSeconds(0);
+        nextStart.setMinutes(0);
+
+        if (now.getMinutes() <= 30) {
+            nextStart.setHours(now.getHours() + 1);
+        } else {
+            nextStart.setHours(now.getHours() + 2);
+        }
+
+        const year = nextStart.getFullYear();
+        const month = String(nextStart.getMonth() + 1).padStart(2, '0');
+        const day = String(nextStart.getDate()).padStart(2, '0');
+        const hours = String(nextStart.getHours()).padStart(2, '0');
+        const minutes = String(nextStart.getMinutes()).padStart(2, '0');
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
     const getDefaultEndTime = () => {
         const now = new Date();
-        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        tomorrow.setMinutes(0, 0, 0);
-        tomorrow.setHours(tomorrow.getHours() + 1);
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(22, 30, 0, 0);
 
         const year = tomorrow.getFullYear();
         const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
