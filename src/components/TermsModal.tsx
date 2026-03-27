@@ -34,6 +34,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ show, onClose }) => {
                             <li>3. 若在結標前1分鐘內出價，則結標時間自動延長兩分鐘，直到無人出價為止</li>
                             <li>4. 競標結束時，出價最高且符合規則之使用者即為得標者。</li>
                             <li>5. 得標者應於得標後24小時內完成付款或交易程序，否則視為棄標。</li>
+                            <li>6. 有參與競標的得標紀錄保留24小時</li>
                         </ul>
                     </section>
                     <section>
